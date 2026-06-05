@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE DOCTYPE>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
@@ -515,19 +515,268 @@
 
                 return matchMonth && matchYear;
             });
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบตรวจสอบโค้ด LPG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Sarabun', sans-serif;
+        }
+        body {
+            background-color: #f5f7fb;
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 500px;
+        }
+        .card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            margin-top: 0;
+            color: #2c3e50;
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        h2 {
+            font-size: 18px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        /* จัดวางช่องกรอกข้อมูลให้อยู่แถวเดียวกัน */
+        .input-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        /* กล่องดีไซน์ ถัง...KG */
+        .kg-group {
+            display: flex;
+            align-items: center;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            padding: 0 10px;
+            background: #f8f9fa;
+            color: #495057;
+            font-weight: 600;
+            font-size: 15px;
+            white-space: nowrap;
+        }
+        .kg-group input {
+            width: 50px;
+            border: none;
+            background: transparent;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 700;
+            color: #007bff;
+            outline: none;
+        }
+        /* ซ่อนลูกศรเพิ่มลดตัวเลขของช่อง KG */
+        .kg-group input::-webkit-outer-spin-button,
+        .kg-group input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .kg-group input[type=number] {
+            -moz-appearance: textfield;
+        }
 
-            // ตรวจสอบว่ามีข้อมูลหลังผ่านการกรองไหม
-            if (filteredItems.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="2" class="no-data">ไม่มีข้อมูลโค้ดในเดือน/ปี ที่เลือกไว้</td></tr>`;
+        /* ช่องกรอกโค้ด */
+        .code-input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+            transition: 0.3s;
+        }
+        .code-input:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.2);
+        }
+
+        .btn {
+            width: 100%;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        
+        /* ตารางแสดงผล */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            text-align: left;
+            padding: 10px;
+            font-size: 14px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        th {
+            background-color: #f8f9fa;
+            color: #495057;
+            font-weight: 600;
+        }
+        tr:hover {
+            background-color: #fcfcfc;
+        }
+        .no-data {
+            text-align: center;
+            color: #6c757d;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="card">
+            <h1>ตรวจสอบโค้ด (ทีมออนไลน์)</h1>
+            
+            <div class="input-row">
+                <div class="kg-group">
+                    <span>ถัง</span>
+                    <input type="number" id="kgInput" placeholder="0" min="0">
+                    <span>KG</span>
+                </div>
+                
+                <input type="text" id="codeInput" class="code-input" placeholder="กรอกโค้ดที่ต้องการตรวจสอบ...">
+            </div>
+            
+            <button class="btn" onclick="handleCheckAndSave()">ตรวจสอบ</button>
+        </div>
+
+        <div class="card">
+            <h2>โค้ดที่เคยบันทึก</h2>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 30%;">ขนาดถัง</th>
+                        <th style="width: 35%;">โค้ด</th>
+                        <th style="width: 35%;">วันที่บันทึกข้อมูล</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+        // 🛠️ ตรึงกุญแจเชื่อมต่อโปรเจกต์ Cheknumber ของคุณ
+        const firebaseConfig = {
+            apiKey: "AIzaSyAvq7VPJ6g04DsySxqkzyoVh3f9CRWrmzc",
+            authDomain: "cheknumber-254eb.firebaseapp.com",
+            databaseURL: "https://cheknumber-254eb-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "cheknumber-254eb",
+            storageBucket: "cheknumber-254eb.firebasestorage.app",
+            messagingSenderId: "63118189821",
+            appId: "1:63118189821:web:4794f2e26c839b1b654a94",
+            measurementId: "G-Y91480ZPNV"
+        };
+
+        // เริ่มทำงานระบบ Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const codesRef = database.ref('savedCodes'); // ใช้โฟลเดอร์หลักเดิมตามในตู้เซฟคุณ
+
+        let allRawData = {}; 
+
+        // ฟังก์ชันเมื่อกดปุ่ม "ตรวจสอบ" เพื่อบันทึกข้อมูลลง Firebase
+        function handleCheckAndSave() {
+            const kgVal = document.getElementById('kgInput').value.trim();
+            const inputVal = document.getElementById('codeInput').value.trim();
+            
+            if (!inputVal) {
+                alert('กรุณากรอกโค้ดก่อนครับ');
                 return;
             }
 
-            // นำข้อมูลที่ผ่านการกรองแล้วมาแสดงในตาราง
-            filteredItems.forEach(item => {
+            const now = new Date();
+            const dateString = now.toLocaleString('th-TH', { hour12: false });
+            
+            // บันทึกทั้งรหัสโค้ด และ ขนาดถังแก๊สไปพร้อมกัน
+            codesRef.push({
+                code: inputVal,
+                kg: kgVal ? kgVal : null, // ถ้าไม่ได้กรอกเลขถัง จะบันทึกเป็นค่าว่างไว้
+                dateString: dateString,
+                timestamp: now.getTime()
+            }).then(() => {
+                document.getElementById('codeInput').value = ''; // ล้างช่องกรอกโค้ด
+                // หมายเหตุ: จงใจไม่ล้างช่องเลขถัง KG เผื่อทีมงานตรวจถังขนาดเดิมต่อเนื่อง จะได้ไม่ต้องกดพิมพ์เลขซ้ำ ๆ ครับ
+            }).catch((error) => {
+                alert('เกิดข้อผิดพลาดในการบันทึก: ' + error.message);
+            });
+        }
+
+        // ดึงข้อมูลเวอร์ชันเดิมกลับมาแสดงผล Realtime (ป้องกันปัญหารหัสหาย)
+        codesRef.on('value', (snapshot) => {
+            allRawData = snapshot.val() || {};
+            renderTable(); 
+        });
+
+        // ฟังก์ชันวาดตารางแบบเรียบง่ายและปลอดภัยต่อข้อมูลเก่า
+        function renderTable() {
+            const tableBody = document.getElementById('historyTableBody');
+            tableBody.innerHTML = ''; // ล้างตารางเดิมก่อน
+
+            // แปลงข้อมูลเป็น Array เพื่อเรียงลำดับเวลาล่าสุดขึ้นก่อน
+            const itemsArray = Object.keys(allRawData).map(key => {
+                return { id: key, ...allRawData[key] };
+            });
+
+            itemsArray.reverse(); // เอาล่าสุดขึ้นก่อน
+
+            if (itemsArray.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="3" class="no-data">ไม่มีข้อมูลโค้ดที่บันทึกไว้</td></tr>`;
+                return;
+            }
+
+            // แสดงผลลงตารางเรียงตามคอลัมน์ ขนาดถัง | โค้ด | วันที่
+            itemsArray.forEach(item => {
                 const row = document.createElement('tr');
+                
+                // ถ้ารหัสเก่าไม่มีขนาดถัง ให้โชว์เป็นเครื่องหมาย - แทน
+                const kgDisplay = item.kg ? `ถัง <strong>${item.kg}</strong> KG` : '-';
+                
                 row.innerHTML = `
-                    <td><strong>${item.code}</strong></td>
-                    <td>${item.dateString}</td>
+                    <td>${kgDisplay}</td>
+                    <td><strong>${item.code || ''}</strong></td>
+                    <td>${item.dateString || ''}</td>
                 `;
                 tableBody.appendChild(row);
             });
@@ -535,3 +784,4 @@
     </script>
 </body>
 </html>
+
