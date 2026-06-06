@@ -177,17 +177,29 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             user-select: none;
         }
-        .status-full {
-            background-color: #28a745;
-            color: white;
+        .status-full { background-color: #28a745; color: white; }
+        .status-customer { background-color: #ffc107; color: #212529; }
+        .status-empty { background-color: #dc3545; color: white; }
+
+        /* [ใหม่] แถบป้ายแสดงสัญชาติถังตรงคอลัมน์น้ำหนัก */
+        .kg-badge {
+            padding: 5px 2px;
+            border-radius: 6px;
+            font-weight: 700;
+            display: block;
+            text-align: center;
+            font-size: 11px;
+            box-shadow: inset 0 0 2px rgba(0,0,0,0.05);
         }
-        .status-customer {
-            background-color: #ffc107;
-            color: #212529;
+        .kg-ours {
+            background-color: #e2f0d9;
+            color: #276a3e;
+            border-left: 4px solid #28a745;
         }
-        .status-empty {
-            background-color: #dc3545;
-            color: white;
+        .kg-received {
+            background-color: #fce4d6;
+            color: #a53e1b;
+            border-left: 4px solid #dc3545;
         }
 
         /* ปุ่มไอคอนแก้ไข/ลบในตาราง */
@@ -212,7 +224,7 @@
         }
         th, td {
             text-align: left;
-            padding: 10px 3px;
+            padding: 10px 2px;
             font-size: 12px;
             border-bottom: 1px solid #dee2e6;
             vertical-align: middle;
@@ -270,6 +282,14 @@
                         <option value="empty">🔴 ถังเปล่า (สีแดง)</option>
                     </select>
                 </div>
+
+                <div class="field-block" id="ownerTypeBlock" style="display: none; margin-top: 10px;">
+                    <label style="color: #28a745;">🏷️ สัญชาติถัง (แถบสีตรงน้ำหนัก KG):</label>
+                    <select id="ownerTypeInput" class="code-input" style="width: 100%; height: 45px;">
+                        <option value="ours">🟢 ถังของเรา (แถบสีเขียว)</option>
+                        <option value="received">🔴 ถังที่รับเข้ามาใหม่ (แถบสีแดง)</option>
+                    </select>
+                </div>
                 
                 <div class="field-block" id="receivedBlock">
                     <label>🟡 รหัสถังที่รับมา (ถังคืนจากลูกค้า ➡️ จะเปลี่ยนเป็นสีแดง ถังเปล่า)</label>
@@ -292,10 +312,10 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 14%;">ขนาด</th>
+                        <th style="width: 16%;">ขนาด</th>
                         <th style="width: 24%;">โค้ดถัง</th>
                         <th style="width: 14%;">หมดอายุ</th>
-                        <th style="width: 22%;">วันที่อัปเดต</th>
+                        <th style="width: 20%;">วันที่อัปเดต</th>
                         <th style="width: 18%; text-align: center;">สถานะถัง</th>
                         <th style="width: 8%; text-align: center;">ลบ</th>
                     </tr>
@@ -340,30 +360,32 @@
             const now = new Date();
             const dateString = now.toLocaleString('th-TH', { hour12: false });
 
-            // 📝 1. กรณีทำงานใน "โหมดแก้ไขข้อมูลถังใบเดียว" (กดมาจากปุ่มรูปดินสอ)
+            // 📝 1. กรณีทำงานใน "โหมดแก้ไขข้อมูลถังใบเดียว"
             if (editId) {
                 if (!codeSoldVal) {
                     alert('กรุณากรอกรหัสถังด้วยครับ');
                     return;
                 }
                 const selectedStatus = document.getElementById('statusInput').value;
+                const selectedOwner = document.getElementById('ownerTypeInput').value;
 
                 codesRef.child(editId).update({
                     code: codeSoldVal,
                     kg: kgVal ? kgVal : (allRawData[editId].kg || null),
-                    expiryYear: expiryVal ? expiryVal : (allRawData[editId].expiryYear || null), // แก้ไขเดี่ยวสามารถอัปเดตปีได้ปกติ
+                    expiryYear: expiryVal ? expiryVal : (allRawData[editId].expiryYear || null),
                     status: selectedStatus, 
+                    ownerType: selectedOwner, // อัปเดตสัญชาติถังจากการเลือกแมนนวล
                     dateString: dateString,  
                     timestamp: now.getTime() 
                 }).then(() => {
                     justUpdatedCodes = [codeSoldVal];
-                    alert('✏️ แก้ไขและเปลี่ยนสถานะข้อมูลเรียบร้อยแล้วครับ!');
+                    alert('✏️ แก้ไขข้อมูลและสัญชาติถังเรียบร้อยแล้วครับ!');
                     cancelEdit();
                 }).catch((error) => alert('เกิดข้อผิดพลาด: ' + error.message));
                 return;
             }
 
-            // 🔄 2. กรณีทำงานใน "โหมดบันทึกการเปลี่ยนถังขายปกติ" (2 ช่องสแกนสลับถัง)
+            // 🔄 2. กรณีทำงานใน "โหมดบันทึกการเปลี่ยนถังขายปกติ"
             if (!codeSoldVal && !codeReceivedVal) {
                 alert('กรุณากรอกรหัสถังที่ขาย หรือรหัสถังที่รับมา อย่างน้อย 1 ช่องครับ');
                 return;
@@ -371,7 +393,7 @@
 
             justUpdatedCodes = []; 
 
-            // [อัปเดต]: ดำเนินการช่อง "ถังที่ขาย" ➡️ จะปล่อยผ่านช่องปีหมดอายุไปเลย ไม่ให้เขียนทับค่าเดิมในระบบ
+            // ดำเนินการช่อง "ถังที่ขาย" ➡️ บันทึกเป็น ถังของเรา (ownerType: ours)
             if (codeSoldVal) {
                 justUpdatedCodes.push(codeSoldVal);
                 let foundKey = null;
@@ -383,27 +405,27 @@
                 });
 
                 if (foundKey) {
-                    // ถังเดิม: อัปเดตแค่สถานะ เวลา และขนาดกิโล (ปีหมดอายุใช้ของเดิมในระบบ ไม่เอาจากช่องกรอก)
                     codesRef.child(foundKey).update({
                         status: 'customer',
+                        ownerType: 'ours', // สแกนขาย = ถังหมุนเวียนของเราชัวร์
                         dateString: dateString,
                         timestamp: now.getTime(),
                         kg: kgVal ? kgVal : (allRawData[foundKey].kg || null)
                     });
                 } else {
-                    // ถังใหม่: บันทึกเข้าระบบโดยเว้นปีหมดอายุไว้เป็น null (ให้แก้ไขหรือรอระบุตอนรับคืนในอนาคต)
                     codesRef.push({
                         code: codeSoldVal,
                         kg: kgVal ? kgVal : null,
                         expiryYear: null, 
                         status: 'customer',
+                        ownerType: 'ours',
                         dateString: dateString,
                         timestamp: now.getTime()
                     });
                 }
             }
 
-            // [คงเดิม]: ดำเนินการช่อง "ถังที่รับมา" ➡️ นำค่าปีหมดอายุจากฟอร์มไปผูกบันทึกให้ถังใบนี้โดยเฉพาะ
+            // ดำเนินการช่อง "ถังที่รับมา" ➡️ บันทึกเป็น ถังรับเข้าภายนอก (ownerType: received)
             if (codeReceivedVal) {
                 justUpdatedCodes.push(codeReceivedVal);
                 let foundKey = null;
@@ -417,10 +439,11 @@
                 if (foundKey) {
                     codesRef.child(foundKey).update({
                         status: 'empty',
+                        ownerType: 'received', // สแกนรับคืนจากลูกค้า = ถังรับเข้าจากภายนอก
                         dateString: dateString,
                         timestamp: now.getTime(),
                         kg: kgVal ? kgVal : (allRawData[foundKey].kg || null),
-                        expiryYear: expiryVal ? expiryVal : (allRawData[foundKey].expiryYear || null) // ผูกค่าปีหมดอายุให้ถังรับคืน
+                        expiryYear: expiryVal ? expiryVal : (allRawData[foundKey].expiryYear || null)
                     });
                 } else {
                     codesRef.push({
@@ -428,6 +451,7 @@
                         kg: kgVal ? kgVal : null,
                         expiryYear: expiryVal ? expiryVal : null,
                         status: 'empty',
+                        ownerType: 'received',
                         dateString: dateString,
                         timestamp: now.getTime()
                     });
@@ -449,10 +473,12 @@
             document.getElementById('expiryInput').value = item.expiryYear || '';
             document.getElementById('codeSoldInput').value = item.code || '';
             document.getElementById('statusInput').value = item.status || 'full';
+            document.getElementById('ownerTypeInput').value = item.ownerType || 'ours';
 
             document.getElementById('formTitle').innerText = '✏️ แก้ไขข้อมูลและสถานะถัง';
             document.getElementById('soldLabel').innerText = 'รหัสถังที่ต้องการแก้ไข:';
             document.getElementById('statusBlock').style.display = 'block'; 
+            document.getElementById('ownerTypeBlock').style.display = 'block'; // แสดงช่องแก้สัญชาติถัง
             document.getElementById('receivedBlock').style.display = 'none'; 
             document.getElementById('submitBtn').innerText = 'บันทึกการแก้ไข';
             document.getElementById('submitBtn').style.backgroundColor = '#28a745';
@@ -471,6 +497,7 @@
             document.getElementById('formTitle').innerText = 'บันทึกข้อมูลการเปลี่ยนถัง';
             document.getElementById('soldLabel').innerText = '🟢 รหัสถังที่ขาย (ถังเต็ม ➡️ จะเปลี่ยนเป็นสีเหลือง อยู่กับลูกค้า)';
             document.getElementById('statusBlock').style.display = 'none'; 
+            document.getElementById('ownerTypeBlock').style.display = 'none'; // ซ่อนช่องแก้สัญชาติถัง
             document.getElementById('receivedBlock').style.display = 'block';
             document.getElementById('submitBtn').innerText = 'บันทึกข้อมูลการขาย';
             document.getElementById('submitBtn').style.backgroundColor = '#007bff';
@@ -492,7 +519,7 @@
             }
         }
 
-        // ซิงค์ข้อมูล Realtime มาสร้างแถวประวัติและจัดหมวดหมู่ความสำคัญ 3 ชั้น
+        // ซิงค์ข้อมูล Realtime มาสร้างแถวประวัติและจัดหมวดหมู่
         codesRef.on('value', (snapshot) => {
             allRawData = snapshot.val() || {};
             const tableBody = document.getElementById('historyTableBody');
@@ -525,7 +552,7 @@
                 return;
             }
 
-            // ดึงค่าปีปัจจุบันมาเตรียมคำนวณตรวจสอบการหมดอายุ
+            // ดึงค่าปีปัจจุบันมาตรวจสอบการหมดอายุ
             const currentYearAD = new Date().getFullYear();
             const currentYearBE = currentYearAD + 543;
 
@@ -540,6 +567,14 @@
                 const kgDisplay = item.kg ? `${item.kg} KG` : '-';
                 const expiryDisplay = item.expiryYear ? item.expiryYear : '-';
                 
+                // 🔍 [ระบบตรวจสอบแถบสีสัญชาติถังตรงน้ำหนัก KG]
+                const currentOwner = item.ownerType || 'ours'; // ถ้าของเดิมไม่มีค่า ให้ตั้งต้นเป็น ours ไว้ก่อนเพื่อความชัวร์
+                let kgStyleClass = 'kg-badge kg-ours'; // ค่าเริ่มต้น แถบสีเขียว (ถังของเรา)
+                
+                if (currentOwner === 'received') {
+                    kgStyleClass = 'kg-badge kg-received'; // แถบสีแดง (ถังที่รับเข้ามาใหม่)
+                }
+
                 // 🔍 ระบบตรวจจับถังหมดอายุตัวหนังสือสีแดง
                 const expYear = parseInt(item.expiryYear);
                 let expiryStyle = 'font-weight: 600; color: #2c3e50;'; 
@@ -562,9 +597,9 @@
                 }
                 
                 row.innerHTML = `
-                    <td>${kgDisplay}</td>
+                    <td><span class="${kgStyleClass}">${kgDisplay}</span></td>
                     <td>
-                        <button class="btn-action btn-edit" onclick="startEdit('${item.id}')" title="แก้ไขโค้ด/สถานะสี">
+                        <button class="btn-action btn-edit" onclick="startEdit('${item.id}')" title="แก้ไขโค้ด/สัญชาติ/สถานะ">
                             <i class="fas fa-edit"></i>
                         </button>
                         <strong>${item.code || ''}</strong>
