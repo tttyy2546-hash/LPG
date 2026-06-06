@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ระบบตรวจสอบโค้ด LPG</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
             box-sizing: border-box;
@@ -112,7 +113,7 @@
             background-color: #0056b3;
         }
 
-        /* ปุ่มแดงรีเซ็ตข้อมูล */
+        /* ปุ่มแดงรีเซ็ตข้อมูลทั้งหมด */
         .btn-danger {
             background-color: #dc3545;
             color: white;
@@ -127,8 +128,24 @@
         .btn-danger:hover {
             background-color: #bd2130;
         }
+
+        /* ปุ่มรูปถังขยะสำหรับลบรายโค้ด */
+        .btn-delete {
+            background: none;
+            border: none;
+            color: #dc3545;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            transition: 0.2s;
+        }
+        .btn-delete:hover {
+            background-color: rgba(220, 53, 69, 0.1);
+            color: #bd2130;
+        }
         
-        /* ตาราง 3 คอลัมน์สมบูรณ์ */
+        /* ตาราง 4 คอลัมน์ (เพิ่มช่องปุ่มลบไว้ท้ายสุด) */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -136,9 +153,10 @@
         }
         th, td {
             text-align: left;
-            padding: 10px 6px;
+            padding: 10px 4px;
             font-size: 13px;
             border-bottom: 1px solid #dee2e6;
+            vertical-align: middle;
         }
         th {
             background-color: #f8f9fa;
@@ -180,9 +198,10 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 28%;">ขนาดถัง</th>
-                        <th style="width: 36%;">โค้ด</th>
-                        <th style="width: 36%;">วันที่บันทึกข้อมูล</th>
+                        <th style="width: 25%;">ขนาดถัง</th>
+                        <th style="width: 35%;">โค้ด</th>
+                        <th style="width: 30%;">วันที่บันทึก</th>
+                        <th style="width: 10%; text-align: center;">ลบ</th>
                     </tr>
                 </thead>
                 <tbody id="historyTableBody">
@@ -195,7 +214,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // ใช้กุญแจเชื่อมโยงกับฐานข้อมูลโปรเจกต์เดิมของคุณ
+        // 🔒 ตรึงกุญแจเชื่อมโยงกับฐานข้อมูลโปรเจกต์เดิมของคุณตามที่แจ้งครับ
         const firebaseConfig = {
             apiKey: "AIzaSyAvq7VPJ6g04DsySxqkzyoVh3f9CRWrmzc",
             authDomain: "cheknumber-254eb.firebaseapp.com",
@@ -211,10 +230,9 @@
         const database = firebase.database();
         const codesRef = database.ref('savedCodes');
 
-        // ตัวแปรส่วนกลางสำหรับเก็บข้อมูลไว้เช็กโค้ดซ้ำ
         let allRawData = {};
 
-        // ฟังก์ชันบันทึกข้อมูล
+        // ฟังก์ชันบันทึกข้อมูลและเช็กโค้ดซ้ำ
         function handleCheckAndSave() {
             const kgVal = document.getElementById('kgInput').value.trim();
             const inputVal = document.getElementById('codeInput').value.trim();
@@ -224,7 +242,7 @@
                 return;
             }
 
-            // 🔍 ระบบตรวจโค้ดซ้ำ: เช็กว่ามีโค้ดนี้อยู่แล้วในฐานข้อมูลหรือไม่
+            // ระบบตรวจโค้ดซ้ำ
             const isDuplicate = Object.values(allRawData).some(item => item.code === inputVal);
             if (isDuplicate) {
                 alert('⚠️ มีโค้ดนี้ในระบบอยู่แล้วครับ!');
@@ -240,13 +258,26 @@
                 dateString: dateString,
                 timestamp: now.getTime()
             }).then(() => {
-                document.getElementById('codeInput').value = ''; // ล้างเฉพาะช่องกรอกโค้ด
+                document.getElementById('codeInput').value = ''; // ล้างเฉพาะช่องโค้ด
             }).catch((error) => {
                 alert('เกิดข้อผิดพลาด: ' + error.message);
             });
         }
 
-        // ฟังก์ชันล้างข้อมูลเก่าทั้งหมดออกจาก Firebase (เมื่อกดปุ่มสีแดง)
+        // 🗑️ ฟังก์ชันลบข้อมูลเฉพาะโค้ดนั้นโค้ดเดียว (ปุ่มถังขยะรายแถว)
+        function deleteSingleData(id) {
+            if (confirm('คุณต้องการลบโค้ดนี้ออกจากระบบใช่หรือไม่?')) {
+                codesRef.child(id).remove()
+                    .then(() => {
+                        // หน้าจอจะอัปเดตอัตโนมัติเมื่อข้อมูลใน Firebase เปลี่ยนแปลง
+                    })
+                    .catch((error) => {
+                        alert('เกิดข้อผิดพลาดในการลบโค้ด: ' + error.message);
+                    });
+            }
+        }
+
+        // ฟังก์ชันล้างข้อมูลเก่าทั้งหมดออกจาก Firebase (เมื่อกดปุ่มสีแดงใหญ่)
         function clearAllData() {
             if (confirm('⚠️ คุณแน่ใจใช่ไหมที่จะล้างข้อมูลรหัสทั้งหมดในระบบ? ข้อมูลเก่าทั้งหมดจะถูกลบถาวรเพื่อเริ่มต้นใหม่ครับ')) {
                 codesRef.remove()
@@ -259,7 +290,7 @@
             }
         }
 
-        // ซิงค์ข้อมูล Realtime มาแสดงผลในตาราง 3 คอลัมน์
+        // ซิงค์ข้อมูล Realtime มาแสดงผลในตารางพร้อมปุ่มถังขยะท้ายแถว
         codesRef.on('value', (snapshot) => {
             allRawData = snapshot.val() || {};
             const tableBody = document.getElementById('historyTableBody');
@@ -272,7 +303,7 @@
             itemsArray.reverse(); // เอาล่าสุดขึ้นก่อน
 
             if (itemsArray.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="3" class="no-data">ไม่มีข้อมูลโค้ดที่บันทึกไว้</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="4" class="no-data">ไม่มีข้อมูลโค้ดที่บันทึกไว้</td></tr>`;
                 return;
             }
 
@@ -284,6 +315,11 @@
                     <td>${kgDisplay}</td>
                     <td><strong>${item.code || ''}</strong></td>
                     <td style="color: #666; font-size: 12px;">${item.dateString || ''}</td>
+                    <td style="text-align: center;">
+                        <button class="btn-delete" onclick="deleteSingleData('${item.id}')" title="ลบโค้ดนี้">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
                 `;
                 tableBody.appendChild(row);
             });
