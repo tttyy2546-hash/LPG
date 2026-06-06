@@ -164,7 +164,7 @@
             background-color: rgba(220, 53, 69, 0.1);
         }
         
-        /* ตารางประวัติ (รองรับช่องปีหมดอายุเพิ่มมา) */
+        /* ตารางประวัติ */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -253,7 +253,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // 🔒 ตรึงกุญแจเชื่อมโยงโปรเจกต์ Cheknumber ของคุณเหมือนเดิม 100% ครับ
+        // 🔒 ใช้กุญแจเชื่อมโยงฐานข้อมูลโปรเจกต์เดิมของคุณเหมือนเดิมครับ
         const firebaseConfig = {
             apiKey: "AIzaSyAvq7VPJ6g04DsySxqkzyoVh3f9CRWrmzc",
             authDomain: "cheknumber-254eb.firebaseapp.com",
@@ -270,7 +270,7 @@
         const codesRef = database.ref('savedCodes');
 
         let allRawData = {};
-        let editId = null; // ตัวแปรคุมโหมดแก้ไข (ถ้ามีค่าคืออยู่ในโหมดแก้ไขโค้ดนั้น ๆ)
+        let editId = null; // เก็บไอดีที่กำลังแก้ไข
 
         // ฟังก์ชันบันทึกข้อมูล / บันทึกแก้ไข และระบบตรวจสอบโค้ดซ้ำ
         function handleCheckAndSave() {
@@ -283,16 +283,15 @@
                 return;
             }
 
-            // ระบบตรวจโค้ดซ้ำ (ข้ามข้อมูลตัวเองหากเรากำลังแก้ไขใบเดิมอยู่)
-            const isDuplicate = Object.values(allRawData).some(item => {
-                if (editId && item.id === editId) return false; 
-                return item.code === inputVal;
+            // 🔍 [จุดที่แก้ไขบั๊ก]: ปรับให้เช็ก Key จาก Object ตรงๆ เพื่อให้ระบบข้าม ID ตัวเองตอนอยู่ในโหมดแก้ไขได้อย่างถูกต้อง
+            const isDuplicate = Object.keys(allRawData).some(key => {
+                if (editId && key === editId) return false; // ถ้าไอดีตรงกับที่กำลังแก้ไข ให้ข้าม (ไม่ถือว่าซ้ำ)
+                return allRawData[key].code === inputVal;
             });
             
             if (isDuplicate) {
                 alert('⚠️ มีโค้ดนี้ในระบบอยู่แล้วครับ! ระบบกำลังเลื่อนไปแสดงตำแหน่งข้อมูล...');
                 
-                // ถ้ายกเลิกโหมดแก้ไขไปหาตัวซ้ำ ให้เคลียร์ฟอร์มก่อนได้ครับ
                 if(editId) cancelEdit();
 
                 const targetRow = document.querySelector(`tr[data-code="${CSS.escape(inputVal)}"]`);
@@ -307,21 +306,20 @@
             }
 
             if (editId) {
-                // 📝 กรณีทำงานใน "โหมดแก้ไขโค้ดเก่า"
+                // 📝 บันทึกทับข้อมูลเดิมในโหมดแก้ไข (ผ่านฉลุยแล้วครับ)
                 codesRef.child(editId).update({
                     code: inputVal,
                     kg: kgVal ? kgVal : null,
                     expiryYear: expiryVal ? expiryVal : null
-                    // คงวันที่เวลาบันทึกครั้งแรกเอาไว้ ไม่แก้ไขวันดั้งเดิมครับ
                 }).then(() => {
-                    alert('✏️ อัปเดตแก้ไขโค้ดเรียบร้อยแล้วครับ!');
+                    alert('✏️ อัปเดตแก้ไขข้อมูลเรียบร้อยแล้วครับ!');
                     cancelEdit(); // ปิดโหมดแก้ไขและเคลียร์ช่องกรอกข้อมูล
                 }).catch((error) => {
                     alert('เกิดข้อผิดพลาดในการแก้ไข: ' + error.message);
                 });
 
             } else {
-                // ➕ กรณีทำงานใน "โหมดเพิ่มโค้ดใหม่ปกติ"
+                // ➕ เพิ่มข้อมูลใหม่ปกติ
                 const now = new Date();
                 const dateString = now.toLocaleString('th-TH', { hour12: false });
                 
@@ -332,7 +330,6 @@
                     dateString: dateString,
                     timestamp: now.getTime()
                 }).then(() => {
-                    // ล้างข้อมูลช่องกรอกทั้งหมดหลังจากเพิ่มสำเร็จเพื่อความสะดวกใบต่อไป
                     document.getElementById('kgInput').value = '';
                     document.getElementById('codeInput').value = '';
                     document.getElementById('expiryInput').value = '';
@@ -342,25 +339,23 @@
             }
         }
 
-        // ✏️ ฟังก์ชันเริ่มเข้าสู่โหมดแก้ไข (เมื่อกดปุ่มดินสอท้ายแถว)
+        // ✏️ ฟังก์ชันดึงข้อมูลขึ้นมาแก้ไข (เมื่อกดปุ่มดินสอ)
         function startEdit(id) {
             const item = allRawData[id];
             if (!item) return;
 
-            editId = id; // ล็อกเป้าหมาย ID
+            editId = id; // ล็อกไอดีเป้าหมาย
             
-            // ดึงข้อมูลแถวนั้นมาใส่ในช่องกรอกด้านบน
             document.getElementById('kgInput').value = item.kg || '';
             document.getElementById('codeInput').value = item.code || '';
             document.getElementById('expiryInput').value = item.expiryYear || '';
 
-            // ปรับหน้าตาฟอร์มให้เป็นโหมดแก้ไขสีเขียวแจ้งเตือนผู้ใช้
+            // ปรับปุ่มเป็น "บันทึกการแก้ไข" สีเขียว
             document.getElementById('formTitle').innerText = '✏️ แก้ไขข้อมูลโค้ด';
             document.getElementById('submitBtn').innerText = 'บันทึกการแก้ไข';
-            document.getElementById('submitBtn').style.backgroundColor = '#28a745'; // เปลี่ยนปุ่มเป็นสีเขียวเซฟข้อมูล
-            document.getElementById('cancelEditBtn').style.display = 'block'; // โชว์ปุ่มยกเลิก
+            document.getElementById('submitBtn').style.backgroundColor = '#28a745';
+            document.getElementById('cancelEditBtn').style.display = 'block';
             
-            // เลื่อนหน้าจอกลับขึ้นไปด้านบนฟอร์มกรอกทันทีเพื่อความสะดวก
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
@@ -380,7 +375,6 @@
         // ฟังก์ชันลบข้อมูลรายโค้ด (ปุ่มถังขยะ)
         function deleteSingleData(id) {
             if (confirm('คุณต้องการลบโค้ดนี้ออกจากระบบใช่หรือไม่?')) {
-                // ถ้าหากแถวที่กดลบ ดันเปิดโหมดแก้ไขค้างไว้ ให้ยกเลิกโหมดแก้ไขด้วยครับป้องกันบั๊ก
                 if(editId === id) cancelEdit();
 
                 codesRef.child(id).remove().catch((error) => {
@@ -403,7 +397,7 @@
             }
         }
 
-        // ซิงค์ข้อมูล Realtime มาสร้างแถวตารางแบบ 5 คอลัมน์
+        // ซิงค์ข้อมูล Realtime มาแสดงผล
         codesRef.on('value', (snapshot) => {
             allRawData = snapshot.val() || {};
             const tableBody = document.getElementById('historyTableBody');
@@ -413,7 +407,7 @@
                 return { id: key, ...allRawData[key] };
             });
 
-            itemsArray.reverse(); // เรียงจากใบอัปเดตล่าสุดขึ้นก่อน
+            itemsArray.reverse(); // เอาล่าสุดขึ้นก่อน
 
             if (itemsArray.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="5" class="no-data">ไม่มีข้อมูลโค้ดที่บันทึกไว้</td></tr>`;
