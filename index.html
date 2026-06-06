@@ -46,11 +46,11 @@
             align-items: center;
         }
         
-        /* จัดวางช่องกรอกน้ำหนักถัง กับ ช่องโค้ด */
+        /* แถวช่องกรอกน้ำหนักถัง กับ ช่องโค้ด */
         .input-row {
             display: flex;
             gap: 8px;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             align-items: center;
         }
         
@@ -84,7 +84,7 @@
             margin: 0;
         }
 
-        /* ช่องกรอกโค้ด */
+        /* ช่องกรอกทั่วไป */
         .code-input {
             flex: 1;
             padding: 12px;
@@ -97,8 +97,14 @@
             border-color: #007bff;
         }
 
-        .btn {
+        /* ปุ่มหลักระบบการจัดการฟอร์ม */
+        .btn-group {
+            display: flex;
+            gap: 8px;
             width: 100%;
+        }
+        .btn {
+            flex: 1;
             background-color: #007bff;
             color: white;
             border: none;
@@ -107,9 +113,17 @@
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
+            transition: 0.2s;
         }
         .btn:hover {
             background-color: #0056b3;
+        }
+        .btn-cancel {
+            background-color: #6c757d;
+            max-width: 100px;
+        }
+        .btn-cancel:hover {
+            background-color: #545b62;
         }
 
         /* ปุ่มแดงรีเซ็ตข้อมูลทั้งหมด */
@@ -127,21 +141,30 @@
             background-color: #bd2130;
         }
 
-        /* ปุ่มรูปถังขยะลบรายโค้ด */
-        .btn-delete {
+        /* ปุ่มไอคอนในตาราง */
+        .btn-action {
             background: none;
             border: none;
-            color: #dc3545;
             cursor: pointer;
-            font-size: 16px;
-            padding: 6px 10px;
-            border-radius: 6px;
+            font-size: 15px;
+            padding: 6px 6px;
+            border-radius: 4px;
+            transition: 0.2s;
+        }
+        .btn-edit {
+            color: #007bff;
+        }
+        .btn-edit:hover {
+            background-color: rgba(0, 123, 255, 0.1);
+        }
+        .btn-delete {
+            color: #dc3545;
         }
         .btn-delete:hover {
             background-color: rgba(220, 53, 69, 0.1);
         }
         
-        /* ตารางประวัติ */
+        /* ตารางประวัติ (รองรับช่องปีหมดอายุเพิ่มมา) */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -150,7 +173,7 @@
         th, td {
             text-align: left;
             padding: 10px 4px;
-            font-size: 13px;
+            font-size: 12px;
             border-bottom: 1px solid #dee2e6;
             vertical-align: middle;
         }
@@ -165,15 +188,15 @@
             padding: 20px;
         }
 
-        /* 💫 เอฟเฟกต์กระพริบและวงกรอบสีเหลืองหนา ๆ เมื่อเจอโค้ดซ้ำ */
+        /* เอฟเฟกต์กระพริบและวงกรอบสีเหลืองหนาเมื่อโค้ดซ้ำ */
         @keyframes highlightFlash {
             0% { background-color: #fff3cd; }
             50% { background-color: #ffda6a; }
             100% { background-color: transparent; }
         }
         .highlight-row {
-            animation: highlightFlash 1s ease-in-out 3; /* กระพริบเด่น ๆ 3 รอบ */
-            outline: 3px solid #ffc107 !important; /* วงกรอบหนา ๆ สีส้มอมเหลือง */
+            animation: highlightFlash 1s ease-in-out 3;
+            outline: 3px solid #ffc107 !important;
             outline-offset: -3px;
             font-weight: bold;
         }
@@ -183,7 +206,7 @@
 
     <div class="container">
         <div class="card">
-            <h1>ตรวจสอบโค้ด</h1>
+            <h1 id="formTitle">ตรวจสอบโค้ด</h1>
             
             <div class="input-row">
                 <div class="kg-container">
@@ -191,11 +214,17 @@
                     <input type="number" id="kgInput" placeholder="0">
                     <span>KG</span>
                 </div>
-                
                 <input type="text" id="codeInput" class="code-input" placeholder="กรอกโค้ดที่ต้องการตรวจสอบ...">
             </div>
             
-            <button class="btn" onclick="handleCheckAndSave()">ตรวจสอบ</button>
+            <div class="input-row" style="margin-bottom: 15px;">
+                <input type="text" id="expiryInput" class="code-input" placeholder="ปีหมดอายุ (เช่น 2575 หรือ 2030)...">
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn" id="submitBtn" onclick="handleCheckAndSave()">ตรวจสอบ</button>
+                <button class="btn btn-cancel" id="cancelEditBtn" onclick="cancelEdit()" style="display: none;">ยกเลิก</button>
+            </div>
         </div>
 
         <div class="card">
@@ -207,10 +236,11 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 25%;">ขนาดถัง</th>
-                        <th style="width: 35%;">โค้ด</th>
-                        <th style="width: 30%;">วันที่บันทึก</th>
-                        <th style="width: 10%; text-align: center;">ลบ</th>
+                        <th style="width: 20%;">ขนาดถัง</th>
+                        <th style="width: 26%;">โค้ด</th>
+                        <th style="width: 20%;">ปีหมดอายุ</th>
+                        <th style="width: 22%;">วันที่บันทึก</th>
+                        <th style="width: 12%; text-align: center;">จัดการ</th>
                     </tr>
                 </thead>
                 <tbody id="historyTableBody">
@@ -223,7 +253,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // 🔒 ใช้กุญแจเชื่อมโยงชุดเดิมของคุณตามที่สั่งครับ
+        // 🔒 ตรึงกุญแจเชื่อมโยงโปรเจกต์ Cheknumber ของคุณเหมือนเดิม 100% ครับ
         const firebaseConfig = {
             apiKey: "AIzaSyAvq7VPJ6g04DsySxqkzyoVh3f9CRWrmzc",
             authDomain: "cheknumber-254eb.firebaseapp.com",
@@ -240,33 +270,35 @@
         const codesRef = database.ref('savedCodes');
 
         let allRawData = {};
+        let editId = null; // ตัวแปรคุมโหมดแก้ไข (ถ้ามีค่าคืออยู่ในโหมดแก้ไขโค้ดนั้น ๆ)
 
-        // ฟังก์ชันบันทึกข้อมูลและระบบเลื่อนหน้าจอเมื่อเจอโค้ดซ้ำ
+        // ฟังก์ชันบันทึกข้อมูล / บันทึกแก้ไข และระบบตรวจสอบโค้ดซ้ำ
         function handleCheckAndSave() {
             const kgVal = document.getElementById('kgInput').value.trim();
             const inputVal = document.getElementById('codeInput').value.trim();
+            const expiryVal = document.getElementById('expiryInput').value.trim();
             
             if (!inputVal) {
                 alert('กรุณากรอกโค้ดก่อนครับ');
                 return;
             }
 
-            // 🔍 ระบบตรวจโค้ดซ้ำขั้นสูง
-            const isDuplicate = Object.values(allRawData).some(item => item.code === inputVal);
+            // ระบบตรวจโค้ดซ้ำ (ข้ามข้อมูลตัวเองหากเรากำลังแก้ไขใบเดิมอยู่)
+            const isDuplicate = Object.values(allRawData).some(item => {
+                if (editId && item.id === editId) return false; 
+                return item.code === inputVal;
+            });
             
             if (isDuplicate) {
                 alert('⚠️ มีโค้ดนี้ในระบบอยู่แล้วครับ! ระบบกำลังเลื่อนไปแสดงตำแหน่งข้อมูล...');
                 
-                // ใช้คำสั่งตามหาแถวตารางที่มี data-code ตรงกับที่กรอก
+                // ถ้ายกเลิกโหมดแก้ไขไปหาตัวซ้ำ ให้เคลียร์ฟอร์มก่อนได้ครับ
+                if(editId) cancelEdit();
+
                 const targetRow = document.querySelector(`tr[data-code="${CSS.escape(inputVal)}"]`);
                 if (targetRow) {
-                    // 📜 1. เลื่อนหน้าจอลงไปหาตำแหน่งโค้ดนั้นอย่างนุ่มนวลให้อยู่ตรงกลางจอ
                     targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    
-                    // 🟡 2. สั่งวงกรอบและกระพริบไฮไลท์สีเหลืองเด่น ๆ 
                     targetRow.classList.add('highlight-row');
-                    
-                    // ล้างสถานะไฮไลท์ออกเมื่อเอฟเฟกต์ทำงานเสร็จ (3 วินาที) เผื่อมีการตรวจซ้ำรอบหน้า
                     setTimeout(() => {
                         targetRow.classList.remove('highlight-row');
                     }, 3000);
@@ -274,24 +306,83 @@
                 return;
             }
 
-            const now = new Date();
-            const dateString = now.toLocaleString('th-TH', { hour12: false });
+            if (editId) {
+                // 📝 กรณีทำงานใน "โหมดแก้ไขโค้ดเก่า"
+                codesRef.child(editId).update({
+                    code: inputVal,
+                    kg: kgVal ? kgVal : null,
+                    expiryYear: expiryVal ? expiryVal : null
+                    // คงวันที่เวลาบันทึกครั้งแรกเอาไว้ ไม่แก้ไขวันดั้งเดิมครับ
+                }).then(() => {
+                    alert('✏️ อัปเดตแก้ไขโค้ดเรียบร้อยแล้วครับ!');
+                    cancelEdit(); // ปิดโหมดแก้ไขและเคลียร์ช่องกรอกข้อมูล
+                }).catch((error) => {
+                    alert('เกิดข้อผิดพลาดในการแก้ไข: ' + error.message);
+                });
+
+            } else {
+                // ➕ กรณีทำงานใน "โหมดเพิ่มโค้ดใหม่ปกติ"
+                const now = new Date();
+                const dateString = now.toLocaleString('th-TH', { hour12: false });
+                
+                codesRef.push({
+                    code: inputVal,
+                    kg: kgVal ? kgVal : null,
+                    expiryYear: expiryVal ? expiryVal : null,
+                    dateString: dateString,
+                    timestamp: now.getTime()
+                }).then(() => {
+                    // ล้างข้อมูลช่องกรอกทั้งหมดหลังจากเพิ่มสำเร็จเพื่อความสะดวกใบต่อไป
+                    document.getElementById('kgInput').value = '';
+                    document.getElementById('codeInput').value = '';
+                    document.getElementById('expiryInput').value = '';
+                }).catch((error) => {
+                    alert('เกิดข้อผิดพลาดในการบันทึก: ' + error.message);
+                });
+            }
+        }
+
+        // ✏️ ฟังก์ชันเริ่มเข้าสู่โหมดแก้ไข (เมื่อกดปุ่มดินสอท้ายแถว)
+        function startEdit(id) {
+            const item = allRawData[id];
+            if (!item) return;
+
+            editId = id; // ล็อกเป้าหมาย ID
             
-            codesRef.push({
-                code: inputVal,
-                kg: kgVal ? kgVal : null,
-                dateString: dateString,
-                timestamp: now.getTime()
-            }).then(() => {
-                document.getElementById('codeInput').value = ''; // ล้างเฉพาะช่องกรอกโค้ด
-            }).catch((error) => {
-                alert('เกิดข้อผิดพลาด: ' + error.message);
-            });
+            // ดึงข้อมูลแถวนั้นมาใส่ในช่องกรอกด้านบน
+            document.getElementById('kgInput').value = item.kg || '';
+            document.getElementById('codeInput').value = item.code || '';
+            document.getElementById('expiryInput').value = item.expiryYear || '';
+
+            // ปรับหน้าตาฟอร์มให้เป็นโหมดแก้ไขสีเขียวแจ้งเตือนผู้ใช้
+            document.getElementById('formTitle').innerText = '✏️ แก้ไขข้อมูลโค้ด';
+            document.getElementById('submitBtn').innerText = 'บันทึกการแก้ไข';
+            document.getElementById('submitBtn').style.backgroundColor = '#28a745'; // เปลี่ยนปุ่มเป็นสีเขียวเซฟข้อมูล
+            document.getElementById('cancelEditBtn').style.display = 'block'; // โชว์ปุ่มยกเลิก
+            
+            // เลื่อนหน้าจอกลับขึ้นไปด้านบนฟอร์มกรอกทันทีเพื่อความสะดวก
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ฟังก์ชันยกเลิกการแก้ไข / เคลียร์ฟอร์มกลับสู่โหมดปกติ
+        function cancelEdit() {
+            editId = null;
+            document.getElementById('kgInput').value = '';
+            document.getElementById('codeInput').value = '';
+            document.getElementById('expiryInput').value = '';
+
+            document.getElementById('formTitle').innerText = 'ตรวจสอบโค้ด';
+            document.getElementById('submitBtn').innerText = 'ตรวจสอบ';
+            document.getElementById('submitBtn').style.backgroundColor = '#007bff';
+            document.getElementById('cancelEditBtn').style.display = 'none';
         }
 
         // ฟังก์ชันลบข้อมูลรายโค้ด (ปุ่มถังขยะ)
         function deleteSingleData(id) {
             if (confirm('คุณต้องการลบโค้ดนี้ออกจากระบบใช่หรือไม่?')) {
+                // ถ้าหากแถวที่กดลบ ดันเปิดโหมดแก้ไขค้างไว้ ให้ยกเลิกโหมดแก้ไขด้วยครับป้องกันบั๊ก
+                if(editId === id) cancelEdit();
+
                 codesRef.child(id).remove().catch((error) => {
                     alert('เกิดข้อผิดพลาดในการลบโค้ด: ' + error.message);
                 });
@@ -301,6 +392,7 @@
         // ฟังก์ชันล้างข้อมูลเก่าทั้งหมดออกจาก Firebase (ปุ่มสีแดงใหญ่)
         function clearAllData() {
             if (confirm('⚠️ คุณแน่ใจใช่ไหมที่จะล้างข้อมูลรหัสทั้งหมดในระบบ? ข้อมูลเก่าทั้งหมดจะถูกลบถาวรเพื่อเริ่มต้นใหม่ครับ')) {
+                cancelEdit();
                 codesRef.remove()
                     .then(() => {
                         alert('⚡ รีเซ็ตระบบและล้างข้อมูลเก่าเรียบร้อยแล้วครับ!');
@@ -311,7 +403,7 @@
             }
         }
 
-        // ดึงข้อมูล Realtime และผูกรหัสโค้ดเข้ากับแถวตารางเพื่อใช้ในการค้นหาและเลื่อนหน้าจอ
+        // ซิงค์ข้อมูล Realtime มาสร้างแถวตารางแบบ 5 คอลัมน์
         codesRef.on('value', (snapshot) => {
             allRawData = snapshot.val() || {};
             const tableBody = document.getElementById('historyTableBody');
@@ -321,27 +413,30 @@
                 return { id: key, ...allRawData[key] };
             });
 
-            itemsArray.reverse(); // เรียงจากล่าสุดขึ้นก่อน
+            itemsArray.reverse(); // เรียงจากใบอัปเดตล่าสุดขึ้นก่อน
 
             if (itemsArray.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="4" class="no-data">ไม่มีข้อมูลโค้ดที่บันทึกไว้</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="5" class="no-data">ไม่มีข้อมูลโค้ดที่บันทึกไว้</td></tr>`;
                 return;
             }
 
             itemsArray.forEach(item => {
                 const row = document.createElement('tr');
-                
-                // ฝังข้อมูลโค้ดไว้ที่ตัวแถวตาราง เพื่อให้ระบบค้นหาเจอและเลื่อนมาวงสีเหลืองได้ถูกต้อง
                 row.setAttribute('data-code', item.code || '');
                 
                 const kgDisplay = item.kg ? `${item.kg} KG` : '-';
+                const expiryDisplay = item.expiryYear ? item.expiryYear : '-';
                 
                 row.innerHTML = `
                     <td>${kgDisplay}</td>
                     <td><strong>${item.code || ''}</strong></td>
-                    <td style="color: #666; font-size: 12px;">${item.dateString || ''}</td>
-                    <td style="text-align: center;">
-                        <button class="btn-delete" onclick="deleteSingleData('${item.id}')" title="ลบโค้ดนี้">
+                    <td style="color: #2c3e50; font-weight: 600;">${expiryDisplay}</td>
+                    <td style="color: #666; font-size: 11px;">${item.dateString || ''}</td>
+                    <td style="text-align: center; white-space: nowrap;">
+                        <button class="btn-action btn-edit" onclick="startEdit('${item.id}')" title="แก้ไขโค้ด">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-action btn-delete" onclick="deleteSingleData('${item.id}')" title="ลบโค้ดนี้">
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     </td>
