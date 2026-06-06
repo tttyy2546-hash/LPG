@@ -46,7 +46,7 @@
             align-items: center;
         }
         
-        /* แถวช่องกรอกน้ำหนักถัง กับ ช่องโค้ด */
+        /* จัดวางช่องกรอกน้ำหนักถัง กับ ช่องโค้ด */
         .input-row {
             display: flex;
             gap: 8px;
@@ -78,7 +78,6 @@
             outline: none;
             padding: 0;
         }
-        /* ซ่อนลูกศรช่องตัวเลข */
         .kg-container input::-webkit-outer-spin-button,
         .kg-container input::-webkit-inner-spin-button {
             -webkit-appearance: none;
@@ -123,13 +122,12 @@
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
-            transition: 0.2s;
         }
         .btn-danger:hover {
             background-color: #bd2130;
         }
 
-        /* ปุ่มรูปถังขยะสำหรับลบรายโค้ด */
+        /* ปุ่มรูปถังขยะลบรายโค้ด */
         .btn-delete {
             background: none;
             border: none;
@@ -138,14 +136,12 @@
             font-size: 16px;
             padding: 6px 10px;
             border-radius: 6px;
-            transition: 0.2s;
         }
         .btn-delete:hover {
             background-color: rgba(220, 53, 69, 0.1);
-            color: #bd2130;
         }
         
-        /* ตาราง 4 คอลัมน์ (เพิ่มช่องปุ่มลบไว้ท้ายสุด) */
+        /* ตารางประวัติ */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -167,6 +163,19 @@
             text-align: center;
             color: #6c757d;
             padding: 20px;
+        }
+
+        /* 💫 เอฟเฟกต์กระพริบและวงกรอบสีเหลืองหนา ๆ เมื่อเจอโค้ดซ้ำ */
+        @keyframes highlightFlash {
+            0% { background-color: #fff3cd; }
+            50% { background-color: #ffda6a; }
+            100% { background-color: transparent; }
+        }
+        .highlight-row {
+            animation: highlightFlash 1s ease-in-out 3; /* กระพริบเด่น ๆ 3 รอบ */
+            outline: 3px solid #ffc107 !important; /* วงกรอบหนา ๆ สีส้มอมเหลือง */
+            outline-offset: -3px;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -214,7 +223,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // 🔒 ตรึงกุญแจเชื่อมโยงกับฐานข้อมูลโปรเจกต์เดิมของคุณตามที่แจ้งครับ
+        // 🔒 ใช้กุญแจเชื่อมโยงชุดเดิมของคุณตามที่สั่งครับ
         const firebaseConfig = {
             apiKey: "AIzaSyAvq7VPJ6g04DsySxqkzyoVh3f9CRWrmzc",
             authDomain: "cheknumber-254eb.firebaseapp.com",
@@ -232,7 +241,7 @@
 
         let allRawData = {};
 
-        // ฟังก์ชันบันทึกข้อมูลและเช็กโค้ดซ้ำ
+        // ฟังก์ชันบันทึกข้อมูลและระบบเลื่อนหน้าจอเมื่อเจอโค้ดซ้ำ
         function handleCheckAndSave() {
             const kgVal = document.getElementById('kgInput').value.trim();
             const inputVal = document.getElementById('codeInput').value.trim();
@@ -242,10 +251,26 @@
                 return;
             }
 
-            // ระบบตรวจโค้ดซ้ำ
+            // 🔍 ระบบตรวจโค้ดซ้ำขั้นสูง
             const isDuplicate = Object.values(allRawData).some(item => item.code === inputVal);
+            
             if (isDuplicate) {
-                alert('⚠️ มีโค้ดนี้ในระบบอยู่แล้วครับ!');
+                alert('⚠️ มีโค้ดนี้ในระบบอยู่แล้วครับ! ระบบกำลังเลื่อนไปแสดงตำแหน่งข้อมูล...');
+                
+                // ใช้คำสั่งตามหาแถวตารางที่มี data-code ตรงกับที่กรอก
+                const targetRow = document.querySelector(`tr[data-code="${CSS.escape(inputVal)}"]`);
+                if (targetRow) {
+                    // 📜 1. เลื่อนหน้าจอลงไปหาตำแหน่งโค้ดนั้นอย่างนุ่มนวลให้อยู่ตรงกลางจอ
+                    targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
+                    // 🟡 2. สั่งวงกรอบและกระพริบไฮไลท์สีเหลืองเด่น ๆ 
+                    targetRow.classList.add('highlight-row');
+                    
+                    // ล้างสถานะไฮไลท์ออกเมื่อเอฟเฟกต์ทำงานเสร็จ (3 วินาที) เผื่อมีการตรวจซ้ำรอบหน้า
+                    setTimeout(() => {
+                        targetRow.classList.remove('highlight-row');
+                    }, 3000);
+                }
                 return;
             }
 
@@ -258,26 +283,22 @@
                 dateString: dateString,
                 timestamp: now.getTime()
             }).then(() => {
-                document.getElementById('codeInput').value = ''; // ล้างเฉพาะช่องโค้ด
+                document.getElementById('codeInput').value = ''; // ล้างเฉพาะช่องกรอกโค้ด
             }).catch((error) => {
                 alert('เกิดข้อผิดพลาด: ' + error.message);
             });
         }
 
-        // 🗑️ ฟังก์ชันลบข้อมูลเฉพาะโค้ดนั้นโค้ดเดียว (ปุ่มถังขยะรายแถว)
+        // ฟังก์ชันลบข้อมูลรายโค้ด (ปุ่มถังขยะ)
         function deleteSingleData(id) {
             if (confirm('คุณต้องการลบโค้ดนี้ออกจากระบบใช่หรือไม่?')) {
-                codesRef.child(id).remove()
-                    .then(() => {
-                        // หน้าจอจะอัปเดตอัตโนมัติเมื่อข้อมูลใน Firebase เปลี่ยนแปลง
-                    })
-                    .catch((error) => {
-                        alert('เกิดข้อผิดพลาดในการลบโค้ด: ' + error.message);
-                    });
+                codesRef.child(id).remove().catch((error) => {
+                    alert('เกิดข้อผิดพลาดในการลบโค้ด: ' + error.message);
+                });
             }
         }
 
-        // ฟังก์ชันล้างข้อมูลเก่าทั้งหมดออกจาก Firebase (เมื่อกดปุ่มสีแดงใหญ่)
+        // ฟังก์ชันล้างข้อมูลเก่าทั้งหมดออกจาก Firebase (ปุ่มสีแดงใหญ่)
         function clearAllData() {
             if (confirm('⚠️ คุณแน่ใจใช่ไหมที่จะล้างข้อมูลรหัสทั้งหมดในระบบ? ข้อมูลเก่าทั้งหมดจะถูกลบถาวรเพื่อเริ่มต้นใหม่ครับ')) {
                 codesRef.remove()
@@ -290,7 +311,7 @@
             }
         }
 
-        // ซิงค์ข้อมูล Realtime มาแสดงผลในตารางพร้อมปุ่มถังขยะท้ายแถว
+        // ดึงข้อมูล Realtime และผูกรหัสโค้ดเข้ากับแถวตารางเพื่อใช้ในการค้นหาและเลื่อนหน้าจอ
         codesRef.on('value', (snapshot) => {
             allRawData = snapshot.val() || {};
             const tableBody = document.getElementById('historyTableBody');
@@ -300,7 +321,7 @@
                 return { id: key, ...allRawData[key] };
             });
 
-            itemsArray.reverse(); // เอาล่าสุดขึ้นก่อน
+            itemsArray.reverse(); // เรียงจากล่าสุดขึ้นก่อน
 
             if (itemsArray.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="4" class="no-data">ไม่มีข้อมูลโค้ดที่บันทึกไว้</td></tr>`;
@@ -309,6 +330,10 @@
 
             itemsArray.forEach(item => {
                 const row = document.createElement('tr');
+                
+                // ฝังข้อมูลโค้ดไว้ที่ตัวแถวตาราง เพื่อให้ระบบค้นหาเจอและเลื่อนมาวงสีเหลืองได้ถูกต้อง
+                row.setAttribute('data-code', item.code || '');
+                
                 const kgDisplay = item.kg ? `${item.kg} KG` : '-';
                 
                 row.innerHTML = `
