@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🧪 [TEST MODE] ระบบตรวจสอบถัง LPG</title>
+    <title>ระบบตรวจสอบและบันทึกข้อมูลถัง LPG</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { box-sizing: border-box; font-family: 'Sarabun', sans-serif; }
-        body { background-color: #e9ecef; margin: 0; padding: 12px; display: flex; flex-direction: column; align-items: center; }
-        .test-banner { background: #ffc107; color: #000; width: 100%; max-width: 500px; text-align: center; padding: 6px; border-radius: 8px; font-weight: bold; font-size: 13px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        body { background-color: #f5f7fb; margin: 0; padding: 12px; display: flex; flex-direction: column; align-items: center; }
         .container { width: 100%; max-width: 500px; }
         .card { background: #ffffff; border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 15px; }
         h1, h2 { margin-top: 0; color: #2c3e50; font-size: 21px; font-weight: 700; margin-bottom: 15px; }
@@ -52,9 +51,6 @@
 </head>
 <body>
 
-    <!-- ป้ายเตือนสถานะจำลองระบบ -->
-    <div class="test-banner"><i class="fas fa-flask"></i> โหมดทดสอบแอป: ข้อมูลถูกเซฟในเครื่องนี้เท่านั้น ไม่เชื่อมโยงเว็บจริง</div>
-
     <div class="container">
         <div class="card">
             <h1 id="formTitle">บันทึกข้อมูลการเปลี่ยนถัง</h1>
@@ -73,7 +69,6 @@
                     <input type="text" id="codeSoldInput" class="code-input" style="width: 100%;" placeholder="กรอกหรือสแกนโค้ดถังที่ขายออก...">
                 </div>
                 
-                <!-- [แก้ไข]: เปลี่ยนข้อความป้ายกำกับเป็น "สถานะถัง" -->
                 <div class="field-block" id="statusBlock" style="display: none;">
                     <label style="color: #007bff;">🎨 สถานะถัง:</label>
                     <select id="statusInput" class="code-input" style="width: 100%; height: 45px;">
@@ -83,7 +78,6 @@
                     </select>
                 </div>
 
-                <!-- [แก้ไข]: เอาข้อความภาษาไทยออก เหลือแค่สัญลักษณ์สีล้วน ๆ -->
                 <div class="field-block" id="ownerTypeBlock" style="display: none; margin-top: 10px;">
                     <label style="color: #28a745;">🏷️ สัญชาติถัง:</label>
                     <select id="ownerTypeInput" class="code-input" style="width: 100%; height: 45px; font-size: 18px;">
@@ -106,7 +100,7 @@
 
         <div class="card">
             <h2>
-                <span>สถานะและประวัติถัง (ข้อมูลจำลอง)</span>
+                <span>สถานะและประวัติถัง</span>
                 <button class="btn-danger" onclick="clearAllData()">รีเซ็ตทั้งหมด</button>
             </h2>
             <table>
@@ -125,16 +119,28 @@
         </div>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
     <script>
-        // ใช้ระบบความจำภายในเครื่อง (LocalStorage) ไม่ยุ่งเกี่ยวกับฐานข้อมูล Firebase จริง
-        let allRawData = JSON.parse(localStorage.getItem('mockDatabaseCodes')) || {};
+        const firebaseConfig = {
+            apiKey: "AIzaSyAvq7VPJ6g04DsySxqkzyoVh3f9CRWrmzc",
+            authDomain: "cheknumber-254eb.firebaseapp.com",
+            databaseURL: "https://cheknumber-254eb-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "cheknumber-254eb",
+            storageBucket: "cheknumber-254eb.firebasestorage.app",
+            messagingSenderId: "63118189821",
+            appId: "1:63118189821:web:4794f2e26c839b1b654a94",
+            measurementId: "G-Y91480ZPNV"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const codesRef = database.ref('savedCodes');
+
+        let allRawData = {};
         let editId = null; 
         let justUpdatedCodes = []; 
-
-        function saveToLocalAndRender() {
-            localStorage.setItem('mockDatabaseCodes', JSON.stringify(allRawData));
-            renderTableData();
-        }
 
         function handleCheckAndSave() {
             const kgVal = document.getElementById('kgInput').value.trim();
@@ -150,7 +156,7 @@
                 const selectedStatus = document.getElementById('statusInput').value;
                 const selectedOwner = document.getElementById('ownerTypeInput').value;
 
-                allRawData[editId] = {
+                codesRef.child(editId).update({
                     code: codeSoldVal,
                     kg: kgVal ? kgVal : (allRawData[editId].kg || null),
                     expiryYear: expiryVal ? expiryVal : (allRawData[editId].expiryYear || null),
@@ -158,10 +164,10 @@
                     ownerType: selectedOwner, 
                     dateString: dateString,  
                     timestamp: now.getTime() 
-                };
-                justUpdatedCodes = [codeSoldVal];
-                cancelEdit();
-                saveToLocalAndRender();
+                }).then(() => {
+                    justUpdatedCodes = [codeSoldVal];
+                    cancelEdit();
+                }).catch((error) => alert('เกิดข้อผิดพลาด: ' + error.message));
                 return;
             }
 
@@ -170,46 +176,47 @@
 
             if (codeSoldVal) {
                 justUpdatedCodes.push(codeSoldVal);
-                let foundKey = Object.keys(allRawData).find(k => String(allRawData[k].code).trim().toLowerCase() === String(codeSoldVal).trim().toLowerCase());
+                let foundKey = null;
+                Object.keys(allRawData).forEach(key => {
+                    if (String(allRawData[key].code || '').trim().toLowerCase() === String(codeSoldVal).trim().toLowerCase()) foundKey = key;
+                });
 
                 if (foundKey) {
-                    allRawData[foundKey] = {
-                        ...allRawData[foundKey],
+                    codesRef.child(foundKey).update({
                         status: 'customer',
-                        ownerType: 'ours',
+                        ownerType: 'ours', 
                         dateString: dateString,
                         timestamp: now.getTime(),
                         kg: kgVal ? kgVal : (allRawData[foundKey].kg || null)
-                    };
+                    });
                 } else {
-                    const newId = 'test_' + Date.now() + '_s';
-                    allRawData[newId] = { code: codeSoldVal, kg: kgVal ? kgVal : null, expiryYear: null, status: 'customer', ownerType: 'ours', dateString: dateString, timestamp: now.getTime() };
+                    codesRef.push({ code: codeSoldVal, kg: kgVal ? kgVal : null, expiryYear: null, status: 'customer', ownerType: 'ours', dateString: dateString, timestamp: now.getTime() });
                 }
             }
 
             if (codeReceivedVal) {
                 justUpdatedCodes.push(codeReceivedVal);
-                let foundKey = Object.keys(allRawData).find(k => String(allRawData[k].code).trim().toLowerCase() === String(codeReceivedVal).trim().toLowerCase());
+                let foundKey = null;
+                Object.keys(allRawData).forEach(key => {
+                    if (String(allRawData[key].code || '').trim().toLowerCase() === String(codeReceivedVal).trim().toLowerCase()) foundKey = key;
+                });
 
                 if (foundKey) {
-                    allRawData[foundKey] = {
-                        ...allRawData[foundKey],
+                    codesRef.child(foundKey).update({
                         status: 'empty',
-                        ownerType: 'received',
+                        ownerType: 'received', 
                         dateString: dateString,
                         timestamp: now.getTime(),
                         kg: kgVal ? kgVal : (allRawData[foundKey].kg || null),
                         expiryYear: expiryVal ? expiryVal : (allRawData[foundKey].expiryYear || null)
-                    };
+                    });
                 } else {
-                    const newId = 'test_' + Date.now() + '_r';
-                    allRawData[newId] = { code: codeReceivedVal, kg: kgVal ? kgVal : null, expiryYear: expiryVal ? expiryVal : null, status: 'empty', ownerType: 'received', dateString: dateString, timestamp: now.getTime() };
+                    codesRef.push({ code: codeReceivedVal, kg: kgVal ? kgVal : null, expiryYear: expiryVal ? expiryVal : null, status: 'empty', ownerType: 'received', dateString: dateString, timestamp: now.getTime() });
                 }
             }
 
             document.getElementById('codeSoldInput').value = '';
             document.getElementById('codeReceivedInput').value = '';
-            saveToLocalAndRender();
         }
 
         function startEdit(id) {
@@ -221,8 +228,7 @@
             document.getElementById('codeSoldInput').value = item.code || '';
             document.getElementById('statusInput').value = item.status || 'full';
             document.getElementById('ownerTypeInput').value = item.ownerType || 'ours';
-            
-            document.getElementById('formTitle').innerText = '✏️ แก้ไขข้อมูล (โหมดจำลอง)';
+            document.getElementById('formTitle').innerText = '✏️ แก้ไขข้อมูลและสถานะถัง';
             document.getElementById('soldLabel').innerText = 'รหัสถังที่ต้องการแก้ไข:';
             document.getElementById('statusBlock').style.display = 'block'; 
             document.getElementById('ownerTypeBlock').style.display = 'block'; 
@@ -250,22 +256,21 @@
         }
 
         function deleteSingleData(id) {
-            if (confirm('ลบถังจำลองใบนี้?')) {
+            if (confirm('คุณต้องการลบถังใบนี้ออกจากระบบใช่หรือไม่?')) {
                 if(editId === id) cancelEdit();
-                delete allRawData[id];
-                saveToLocalAndRender();
+                codesRef.child(id).remove().catch((error) => alert('เกิดข้อผิดพลาด: ' + error.message));
             }
         }
 
         function clearAllData() {
-            if (confirm('รีเซ็ตข้อมูลทดสอบทั้งหมดในเครื่องนี้?')) {
+            if (confirm('⚠️ คุณแน่ใจใช่ไหมที่จะล้างข้อมูลถังทั้งหมดในระบบ?')) {
                 cancelEdit();
-                allRawData = {};
-                saveToLocalAndRender();
+                codesRef.remove().catch((error) => alert('เกิดข้อผิดพลาด: ' + error.message));
             }
         }
 
-        function renderTableData() {
+        codesRef.on('value', (snapshot) => {
+            allRawData = snapshot.val() || {};
             const tableBody = document.getElementById('historyTableBody');
             tableBody.innerHTML = '';
             const itemsArray = Object.keys(allRawData).map(k => ({ id: k, ...allRawData[k] }));
@@ -279,7 +284,7 @@
             });
 
             if (itemsArray.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="6" class="no-data">ไม่มีข้อมูลถังทดสอบในเครื่องนี้</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="6" class="no-data">ไม่มีข้อมูลถังที่บันทึกไว้ในระบบ</td></tr>`;
                 return;
             }
 
@@ -321,13 +326,10 @@
                     justUpdatedCodes = [];
                 }, 3000);
             }
-        }
+        });
 
         document.getElementById('codeSoldInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); handleCheckAndSave(); } });
         document.getElementById('codeReceivedInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); handleCheckAndSave(); } });
-        
-        // รันตารางจำลองขึ้นจอครั้งแรก
-        renderTableData();
     </script>
 </body>
 </html>
