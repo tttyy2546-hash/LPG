@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบตรวจสอบโค้ด LPG</title>
+    <title>ระบบตรวจสอบและบันทึกข้อมูลถัง LPG</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -33,7 +33,7 @@
         h1, h2 {
             margin-top: 0;
             color: #2c3e50;
-            font-size: 22px;
+            font-size: 21px;
             font-weight: 700;
             margin-bottom: 15px;
         }
@@ -46,11 +46,11 @@
             align-items: center;
         }
         
-        /* แถวช่องกรอกน้ำหนักถัง กับ ช่องโค้ด */
+        /* แถวช่องกรอกน้ำหนักถัง กับ ปีหมดอายุ */
         .input-row {
             display: flex;
             gap: 8px;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             align-items: center;
         }
         
@@ -96,12 +96,36 @@
         .code-input:focus {
             border-color: #007bff;
         }
+        
+        /* ปรับแต่ง Dropdown โหมดแก้ไขให้โมเดิร์น */
+        select.code-input {
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23495057' viewBox='0 0 16 16'><path d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/></svg>");
+            background-repeat: no-repeat;
+            background-position: calc(100% - 12px) center;
+            padding-right: 35px;
+            cursor: pointer;
+        }
+
+        /* บล็อกหัวข้อของช่องซื้อขาย */
+        .field-block {
+            margin-bottom: 12px;
+        }
+        .field-block label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 5px;
+        }
 
         /* ปุ่มหลักระบบการจัดการฟอร์ม */
         .btn-group {
             display: flex;
             gap: 8px;
             width: 100%;
+            margin-top: 5px;
         }
         .btn {
             flex: 1;
@@ -141,30 +165,46 @@
             background-color: #bd2130;
         }
 
-        /* ปุ่มไอคอนในตาราง */
+        /* ป้ายแสดงสถานะถังแบบนิ่ง (Badge) */
+        .status-badge {
+            padding: 6px 4px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            width: 100%;
+            text-align: center;
+            display: block;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            user-select: none;
+        }
+        .status-full {
+            background-color: #28a745;
+            color: white;
+        }
+        .status-customer {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        .status-empty {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        /* ปุ่มไอคอนแก้ไข/ลบในตาราง */
         .btn-action {
             background: none;
             border: none;
             cursor: pointer;
-            font-size: 15px;
-            padding: 6px 6px;
+            font-size: 14px;
+            padding: 4px;
             border-radius: 4px;
-            transition: 0.2s;
         }
-        .btn-edit {
-            color: #007bff;
-        }
-        .btn-edit:hover {
-            background-color: rgba(0, 123, 255, 0.1);
-        }
-        .btn-delete {
-            color: #dc3545;
-        }
-        .btn-delete:hover {
-            background-color: rgba(220, 53, 69, 0.1);
-        }
+        .btn-edit { color: #007bff; }
+        .btn-edit:hover { background-color: rgba(0, 123, 255, 0.1); }
+        .btn-delete { color: #dc3545; }
+        .btn-delete:hover { background-color: rgba(220, 53, 69, 0.1); }
         
-        /* ตารางประวัติ */
+        /* ตารางประวัติประสิทธิภาพสูง */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -172,7 +212,7 @@
         }
         th, td {
             text-align: left;
-            padding: 10px 4px;
+            padding: 10px 3px;
             font-size: 12px;
             border-bottom: 1px solid #dee2e6;
             vertical-align: middle;
@@ -188,7 +228,7 @@
             padding: 20px;
         }
 
-        /* เอฟเฟกต์กระพริบและวงกรอบสีเหลืองหนาเมื่อโค้ดซ้ำ */
+        /* เอฟเฟกต์กระพริบขอบเมื่อข้อมูลถูกอัปเดต */
         @keyframes highlightFlash {
             0% { background-color: #fff3cd; }
             50% { background-color: #ffda6a; }
@@ -198,7 +238,6 @@
             animation: highlightFlash 1s ease-in-out 3;
             outline: 3px solid #ffc107 !important;
             outline-offset: -3px;
-            font-weight: bold;
         }
     </style>
 </head>
@@ -206,7 +245,7 @@
 
     <div class="container">
         <div class="card">
-            <h1 id="formTitle">ตรวจสอบโค้ด</h1>
+            <h1 id="formTitle">บันทึกข้อมูลการเปลี่ยนถัง</h1>
             
             <div class="input-row">
                 <div class="kg-container">
@@ -214,33 +253,51 @@
                     <input type="number" id="kgInput" placeholder="0">
                     <span>KG</span>
                 </div>
-                <input type="text" id="codeInput" class="code-input" placeholder="กรอกโค้ดที่ต้องการตรวจสอบ...">
+                <input type="text" id="expiryInput" class="code-input" placeholder="ปีหมดอายุ (อัปเดตเฉพาะถังรับคืน)...">
             </div>
             
-            <div class="input-row" style="margin-bottom: 15px;">
-                <input type="text" id="expiryInput" class="code-input" placeholder="ปีหมดอายุ (เช่น 2575 หรือ 2030)...">
+            <div id="formFieldsContainer">
+                <div class="field-block" id="soldBlock">
+                    <label id="soldLabel">🟢 รหัสถังที่ขาย (ถังเต็ม ➡️ จะเปลี่ยนเป็นสีเหลือง อยู่กับลูกค้า)</label>
+                    <input type="text" id="codeSoldInput" class="code-input" style="width: 100%;" placeholder="กรอกหรือสแกนโค้ดถังที่ขายออก...">
+                </div>
+                
+                <div class="field-block" id="statusBlock" style="display: none;">
+                    <label style="color: #007bff;">🎨 เปลี่ยนสถานะสีถังใบนี้:</label>
+                    <select id="statusInput" class="code-input" style="width: 100%; height: 45px;">
+                        <option value="full">🟢 ถังเต็ม (สีเขียว)</option>
+                        <option value="customer">🟡 อยู่กับลูกค้า (สีเหลือง)</option>
+                        <option value="empty">🔴 ถังเปล่า (สีแดง)</option>
+                    </select>
+                </div>
+                
+                <div class="field-block" id="receivedBlock">
+                    <label>🟡 รหัสถังที่รับมา (ถังคืนจากลูกค้า ➡️ จะเปลี่ยนเป็นสีแดง ถังเปล่า)</label>
+                    <input type="text" id="codeReceivedInput" class="code-input" style="width: 100%;" placeholder="กรอกหรือสแกนโค้ดถังที่รับคืนมา...">
+                </div>
             </div>
             
             <div class="btn-group">
-                <button class="btn" id="submitBtn" onclick="handleCheckAndSave()">ตรวจสอบ</button>
+                <button class="btn" id="submitBtn" onclick="handleCheckAndSave()">บันทึกข้อมูลการขาย</button>
                 <button class="btn btn-cancel" id="cancelEditBtn" onclick="cancelEdit()" style="display: none;">ยกเลิก</button>
             </div>
         </div>
 
         <div class="card">
             <h2>
-                <span>โค้ดที่เคยบันทึก</span>
-                <button class="btn-danger" onclick="clearAllData()">รีเซ็ตข้อมูลทั้งหมด</button>
+                <span>สถานะและประวัติถัง</span>
+                <button class="btn-danger" onclick="clearAllData()">รีเซ็ตทั้งหมด</button>
             </h2>
             
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 20%;">ขนาดถัง</th>
-                        <th style="width: 26%;">โค้ด</th>
-                        <th style="width: 20%;">ปีหมดอายุ</th>
-                        <th style="width: 22%;">วันที่บันทึก</th>
-                        <th style="width: 12%; text-align: center;">จัดการ</th>
+                        <th style="width: 14%;">ขนาด</th>
+                        <th style="width: 24%;">โค้ดถัง</th>
+                        <th style="width: 14%;">หมดอายุ</th>
+                        <th style="width: 22%;">วันที่อัปเดต</th>
+                        <th style="width: 18%; text-align: center;">สถานะถัง</th>
+                        <th style="width: 8%; text-align: center;">ลบ</th>
                     </tr>
                 </thead>
                 <tbody id="historyTableBody">
@@ -253,7 +310,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // 🔒 ใช้กุญแจเชื่อมโยงฐานข้อมูลโปรเจกต์เดิมของคุณเหมือนเดิมครับ
+        // 🔒 ล็อกกุญแจเชื่อมโยงฐานข้อมูลโปรเจกต์เดิมของคุณตามปกติครับ
         const firebaseConfig = {
             apiKey: "AIzaSyAvq7VPJ6g04DsySxqkzyoVh3f9CRWrmzc",
             authDomain: "cheknumber-254eb.firebaseapp.com",
@@ -270,88 +327,133 @@
         const codesRef = database.ref('savedCodes');
 
         let allRawData = {};
-        let editId = null; // เก็บไอดีที่กำลังแก้ไข
+        let editId = null; 
+        let justUpdatedCodes = []; 
 
-        // ฟังก์ชันบันทึกข้อมูล / บันทึกแก้ไข และระบบตรวจสอบโค้ดซ้ำ
+        // ฟังก์ชันประมวลผลการบันทึกข้อมูลสลับถังซื้อขาย และโหมดแก้ไขข้อมูลเดี่ยว
         function handleCheckAndSave() {
             const kgVal = document.getElementById('kgInput').value.trim();
-            const inputVal = document.getElementById('codeInput').value.trim();
             const expiryVal = document.getElementById('expiryInput').value.trim();
+            const codeSoldVal = document.getElementById('codeSoldInput').value.trim();
+            const codeReceivedVal = document.getElementById('codeReceivedInput').value.trim();
             
-            if (!inputVal) {
-                alert('กรุณากรอกโค้ดก่อนครับ');
-                return;
-            }
+            const now = new Date();
+            const dateString = now.toLocaleString('th-TH', { hour12: false });
 
-            // 🔍 [จุดที่แก้ไขบั๊ก]: ปรับให้เช็ก Key จาก Object ตรงๆ เพื่อให้ระบบข้าม ID ตัวเองตอนอยู่ในโหมดแก้ไขได้อย่างถูกต้อง
-            const isDuplicate = Object.keys(allRawData).some(key => {
-                if (editId && key === editId) return false; // ถ้าไอดีตรงกับที่กำลังแก้ไข ให้ข้าม (ไม่ถือว่าซ้ำ)
-                return allRawData[key].code === inputVal;
-            });
-            
-            if (isDuplicate) {
-                alert('⚠️ มีโค้ดนี้ในระบบอยู่แล้วครับ! ระบบกำลังเลื่อนไปแสดงตำแหน่งข้อมูล...');
-                
-                if(editId) cancelEdit();
-
-                const targetRow = document.querySelector(`tr[data-code="${CSS.escape(inputVal)}"]`);
-                if (targetRow) {
-                    targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    targetRow.classList.add('highlight-row');
-                    setTimeout(() => {
-                        targetRow.classList.remove('highlight-row');
-                    }, 3000);
-                }
-                return;
-            }
-
+            // 📝 1. กรณีทำงานใน "โหมดแก้ไขข้อมูลถังใบเดียว" (กดมาจากปุ่มรูปดินสอ)
             if (editId) {
-                // 📝 บันทึกทับข้อมูลเดิมในโหมดแก้ไข (ผ่านฉลุยแล้วครับ)
+                if (!codeSoldVal) {
+                    alert('กรุณากรอกรหัสถังด้วยครับ');
+                    return;
+                }
+                const selectedStatus = document.getElementById('statusInput').value;
+
                 codesRef.child(editId).update({
-                    code: inputVal,
-                    kg: kgVal ? kgVal : null,
-                    expiryYear: expiryVal ? expiryVal : null
+                    code: codeSoldVal,
+                    kg: kgVal ? kgVal : (allRawData[editId].kg || null),
+                    expiryYear: expiryVal ? expiryVal : (allRawData[editId].expiryYear || null), // แก้ไขเดี่ยวสามารถอัปเดตปีได้ปกติ
+                    status: selectedStatus, 
+                    dateString: dateString,  
+                    timestamp: now.getTime() 
                 }).then(() => {
-                    alert('✏️ อัปเดตแก้ไขข้อมูลเรียบร้อยแล้วครับ!');
-                    cancelEdit(); // ปิดโหมดแก้ไขและเคลียร์ช่องกรอกข้อมูล
-                }).catch((error) => {
-                    alert('เกิดข้อผิดพลาดในการแก้ไข: ' + error.message);
+                    justUpdatedCodes = [codeSoldVal];
+                    alert('✏️ แก้ไขและเปลี่ยนสถานะข้อมูลเรียบร้อยแล้วครับ!');
+                    cancelEdit();
+                }).catch((error) => alert('เกิดข้อผิดพลาด: ' + error.message));
+                return;
+            }
+
+            // 🔄 2. กรณีทำงานใน "โหมดบันทึกการเปลี่ยนถังขายปกติ" (2 ช่องสแกนสลับถัง)
+            if (!codeSoldVal && !codeReceivedVal) {
+                alert('กรุณากรอกรหัสถังที่ขาย หรือรหัสถังที่รับมา อย่างน้อย 1 ช่องครับ');
+                return;
+            }
+
+            justUpdatedCodes = []; 
+
+            // [อัปเดต]: ดำเนินการช่อง "ถังที่ขาย" ➡️ จะปล่อยผ่านช่องปีหมดอายุไปเลย ไม่ให้เขียนทับค่าเดิมในระบบ
+            if (codeSoldVal) {
+                justUpdatedCodes.push(codeSoldVal);
+                let foundKey = null;
+                
+                Object.keys(allRawData).forEach(key => {
+                    const dbCode = String(allRawData[key].code || '').trim().toLowerCase();
+                    const inputCode = String(codeSoldVal).trim().toLowerCase();
+                    if (dbCode === inputCode) foundKey = key;
                 });
 
-            } else {
-                // ➕ เพิ่มข้อมูลใหม่ปกติ
-                const now = new Date();
-                const dateString = now.toLocaleString('th-TH', { hour12: false });
-                
-                codesRef.push({
-                    code: inputVal,
-                    kg: kgVal ? kgVal : null,
-                    expiryYear: expiryVal ? expiryVal : null,
-                    dateString: dateString,
-                    timestamp: now.getTime()
-                }).then(() => {
-                    document.getElementById('kgInput').value = '';
-                    document.getElementById('codeInput').value = '';
-                    document.getElementById('expiryInput').value = '';
-                }).catch((error) => {
-                    alert('เกิดข้อผิดพลาดในการบันทึก: ' + error.message);
-                });
+                if (foundKey) {
+                    // ถังเดิม: อัปเดตแค่สถานะ เวลา และขนาดกิโล (ปีหมดอายุใช้ของเดิมในระบบ ไม่เอาจากช่องกรอก)
+                    codesRef.child(foundKey).update({
+                        status: 'customer',
+                        dateString: dateString,
+                        timestamp: now.getTime(),
+                        kg: kgVal ? kgVal : (allRawData[foundKey].kg || null)
+                    });
+                } else {
+                    // ถังใหม่: บันทึกเข้าระบบโดยเว้นปีหมดอายุไว้เป็น null (ให้แก้ไขหรือรอระบุตอนรับคืนในอนาคต)
+                    codesRef.push({
+                        code: codeSoldVal,
+                        kg: kgVal ? kgVal : null,
+                        expiryYear: null, 
+                        status: 'customer',
+                        dateString: dateString,
+                        timestamp: now.getTime()
+                    });
+                }
             }
+
+            // [คงเดิม]: ดำเนินการช่อง "ถังที่รับมา" ➡️ นำค่าปีหมดอายุจากฟอร์มไปผูกบันทึกให้ถังใบนี้โดยเฉพาะ
+            if (codeReceivedVal) {
+                justUpdatedCodes.push(codeReceivedVal);
+                let foundKey = null;
+                
+                Object.keys(allRawData).forEach(key => {
+                    const dbCode = String(allRawData[key].code || '').trim().toLowerCase();
+                    const inputCode = String(codeReceivedVal).trim().toLowerCase();
+                    if (dbCode === inputCode) foundKey = key;
+                });
+
+                if (foundKey) {
+                    codesRef.child(foundKey).update({
+                        status: 'empty',
+                        dateString: dateString,
+                        timestamp: now.getTime(),
+                        kg: kgVal ? kgVal : (allRawData[foundKey].kg || null),
+                        expiryYear: expiryVal ? expiryVal : (allRawData[foundKey].expiryYear || null) // ผูกค่าปีหมดอายุให้ถังรับคืน
+                    });
+                } else {
+                    codesRef.push({
+                        code: codeReceivedVal,
+                        kg: kgVal ? kgVal : null,
+                        expiryYear: expiryVal ? expiryVal : null,
+                        status: 'empty',
+                        dateString: dateString,
+                        timestamp: now.getTime()
+                    });
+                }
+            }
+
+            document.getElementById('codeSoldInput').value = '';
+            document.getElementById('codeReceivedInput').value = '';
         }
 
-        // ✏️ ฟังก์ชันดึงข้อมูลขึ้นมาแก้ไข (เมื่อกดปุ่มดินสอ)
+        // ✏️ ฟังก์ชันเริ่มเข้าสู่โหมดแก้ไขข้อมูลถังใบเดียว
         function startEdit(id) {
             const item = allRawData[id];
             if (!item) return;
 
-            editId = id; // ล็อกไอดีเป้าหมาย
+            editId = id;
             
             document.getElementById('kgInput').value = item.kg || '';
-            document.getElementById('codeInput').value = item.code || '';
             document.getElementById('expiryInput').value = item.expiryYear || '';
+            document.getElementById('codeSoldInput').value = item.code || '';
+            document.getElementById('statusInput').value = item.status || 'full';
 
-            // ปรับปุ่มเป็น "บันทึกการแก้ไข" สีเขียว
-            document.getElementById('formTitle').innerText = '✏️ แก้ไขข้อมูลโค้ด';
+            document.getElementById('formTitle').innerText = '✏️ แก้ไขข้อมูลและสถานะถัง';
+            document.getElementById('soldLabel').innerText = 'รหัสถังที่ต้องการแก้ไข:';
+            document.getElementById('statusBlock').style.display = 'block'; 
+            document.getElementById('receivedBlock').style.display = 'none'; 
             document.getElementById('submitBtn').innerText = 'บันทึกการแก้ไข';
             document.getElementById('submitBtn').style.backgroundColor = '#28a745';
             document.getElementById('cancelEditBtn').style.display = 'block';
@@ -359,45 +461,38 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // ฟังก์ชันยกเลิกการแก้ไข / เคลียร์ฟอร์มกลับสู่โหมดปกติ
         function cancelEdit() {
             editId = null;
             document.getElementById('kgInput').value = '';
-            document.getElementById('codeInput').value = '';
             document.getElementById('expiryInput').value = '';
+            document.getElementById('codeSoldInput').value = '';
+            document.getElementById('codeReceivedInput').value = '';
 
-            document.getElementById('formTitle').innerText = 'ตรวจสอบโค้ด';
-            document.getElementById('submitBtn').innerText = 'ตรวจสอบ';
+            document.getElementById('formTitle').innerText = 'บันทึกข้อมูลการเปลี่ยนถัง';
+            document.getElementById('soldLabel').innerText = '🟢 รหัสถังที่ขาย (ถังเต็ม ➡️ จะเปลี่ยนเป็นสีเหลือง อยู่กับลูกค้า)';
+            document.getElementById('statusBlock').style.display = 'none'; 
+            document.getElementById('receivedBlock').style.display = 'block';
+            document.getElementById('submitBtn').innerText = 'บันทึกข้อมูลการขาย';
             document.getElementById('submitBtn').style.backgroundColor = '#007bff';
             document.getElementById('cancelEditBtn').style.display = 'none';
         }
 
-        // ฟังก์ชันลบข้อมูลรายโค้ด (ปุ่มถังขยะ)
         function deleteSingleData(id) {
-            if (confirm('คุณต้องการลบโค้ดนี้ออกจากระบบใช่หรือไม่?')) {
+            if (confirm('คุณต้องการลบถังใบนี้ออกจากระบบใช่หรือไม่?')) {
                 if(editId === id) cancelEdit();
-
-                codesRef.child(id).remove().catch((error) => {
-                    alert('เกิดข้อผิดพลาดในการลบโค้ด: ' + error.message);
-                });
+                codesRef.child(id).remove().catch((error) => alert('เกิดข้อผิดพลาด: ' + error.message));
             }
         }
 
-        // ฟังก์ชันล้างข้อมูลเก่าทั้งหมดออกจาก Firebase (ปุ่มสีแดงใหญ่)
         function clearAllData() {
-            if (confirm('⚠️ คุณแน่ใจใช่ไหมที่จะล้างข้อมูลรหัสทั้งหมดในระบบ? ข้อมูลเก่าทั้งหมดจะถูกลบถาวรเพื่อเริ่มต้นใหม่ครับ')) {
+            if (confirm('⚠️ คุณแน่ใจใช่ไหมที่จะล้างข้อมูลถังทั้งหมดในระบบ? ข้อมูลเก่าทั้งหมดจะถูกลบถาวรเพื่อเริ่มต้นใหม่ครับ')) {
                 cancelEdit();
-                codesRef.remove()
-                    .then(() => {
-                        alert('⚡ รีเซ็ตระบบและล้างข้อมูลเก่าเรียบร้อยแล้วครับ!');
-                    })
-                    .catch((error) => {
-                        alert('เกิดข้อผิดพลาดในการรีเซ็ต: ' + error.message);
-                    });
+                codesRef.remove().then(() => alert('⚡ รีเซ็ตระบบและล้างข้อมูลเรียบร้อยแล้วครับ!'))
+                .catch((error) => alert('เกิดข้อผิดพลาด: ' + error.message));
             }
         }
 
-        // ซิงค์ข้อมูล Realtime มาแสดงผล
+        // ซิงค์ข้อมูล Realtime มาสร้างแถวประวัติและจัดหมวดหมู่ความสำคัญ 3 ชั้น
         codesRef.on('value', (snapshot) => {
             allRawData = snapshot.val() || {};
             const tableBody = document.getElementById('historyTableBody');
@@ -407,36 +502,108 @@
                 return { id: key, ...allRawData[key] };
             });
 
-            itemsArray.reverse(); // เอาล่าสุดขึ้นก่อน
+            // 🗂️ อัลกอริทึมจัดลำดับหมวดหมู่ถัง LPG 3 ชั้น
+            itemsArray.sort((a, b) => {
+                const kgA = parseFloat(a.kg) || 0;
+                const kgB = parseFloat(b.kg) || 0;
+                if (kgA !== kgB) {
+                    return kgB - kgA; 
+                }
+
+                const statusWeight = { 'full': 1, 'customer': 2, 'empty': 3 };
+                const weightA = statusWeight[a.status || 'full'] || 1;
+                const weightB = statusWeight[b.status || 'full'] || 1;
+                if (weightA !== weightB) {
+                    return weightA - weightB; 
+                }
+
+                return (b.timestamp || 0) - (a.timestamp || 0);
+            });
 
             if (itemsArray.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="5" class="no-data">ไม่มีข้อมูลโค้ดที่บันทึกไว้</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="6" class="no-data">ไม่มีข้อมูลถังที่บันทึกไว้ในระบบ</td></tr>`;
                 return;
             }
+
+            // ดึงค่าปีปัจจุบันมาเตรียมคำนวณตรวจสอบการหมดอายุ
+            const currentYearAD = new Date().getFullYear();
+            const currentYearBE = currentYearAD + 543;
 
             itemsArray.forEach(item => {
                 const row = document.createElement('tr');
                 row.setAttribute('data-code', item.code || '');
                 
+                if (justUpdatedCodes.includes(item.code)) {
+                    row.className = 'highlight-row';
+                }
+
                 const kgDisplay = item.kg ? `${item.kg} KG` : '-';
                 const expiryDisplay = item.expiryYear ? item.expiryYear : '-';
                 
+                // 🔍 ระบบตรวจจับถังหมดอายุตัวหนังสือสีแดง
+                const expYear = parseInt(item.expiryYear);
+                let expiryStyle = 'font-weight: 600; color: #2c3e50;'; 
+                
+                if (!isNaN(expYear)) {
+                    if ((expYear > 2100 && expYear < currentYearBE) || (expYear <= 2100 && expYear < currentYearAD)) {
+                        expiryStyle = 'font-weight: 700; color: #dc3545;'; 
+                    }
+                }
+
+                let statusBadgeHTML = '';
+                const currentStatus = item.status || 'full';
+                
+                if (currentStatus === 'customer') {
+                    statusBadgeHTML = `<span class="status-badge status-customer">อยู่กับลูกค้า</span>`;
+                } else if (currentStatus === 'empty') {
+                    statusBadgeHTML = `<span class="status-badge status-empty">ถังเปล่า</span>`;
+                } else {
+                    statusBadgeHTML = `<span class="status-badge status-full">ถังเต็ม</span>`;
+                }
+                
                 row.innerHTML = `
                     <td>${kgDisplay}</td>
-                    <td><strong>${item.code || ''}</strong></td>
-                    <td style="color: #2c3e50; font-weight: 600;">${expiryDisplay}</td>
-                    <td style="color: #666; font-size: 11px;">${item.dateString || ''}</td>
-                    <td style="text-align: center; white-space: nowrap;">
-                        <button class="btn-action btn-edit" onclick="startEdit('${item.id}')" title="แก้ไขโค้ด">
+                    <td>
+                        <button class="btn-action btn-edit" onclick="startEdit('${item.id}')" title="แก้ไขโค้ด/สถานะสี">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button class="btn-action btn-delete" onclick="deleteSingleData('${item.id}')" title="ลบโค้ดนี้">
+                        <strong>${item.code || ''}</strong>
+                    </td>
+                    <td style="${expiryStyle}">${expiryDisplay}</td>
+                    <td style="color: #666; font-size: 11px;">${item.dateString || ''}</td>
+                    <td style="text-align: center;">${statusBadgeHTML}</td>
+                    <td style="text-align: center;">
+                        <button class="btn-action btn-delete" onclick="deleteSingleData('${item.id}')" title="ลบถังนี้">
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     </td>
                 `;
                 tableBody.appendChild(row);
             });
+
+            if (justUpdatedCodes.length > 0) {
+                setTimeout(() => {
+                    justUpdatedCodes.forEach(c => {
+                        const r = document.querySelector(`tr[data-code="${CSS.escape(c)}"]`);
+                        if (r) r.classList.remove('highlight-row');
+                    });
+                    justUpdatedCodes = [];
+                }, 3000);
+            }
+        });
+
+        // รองรับเครื่องสแกนบาร์โค้ดสแกนแล้วส่งค่าบันทึกทันที
+        document.getElementById('codeSoldInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); 
+                handleCheckAndSave();
+            }
+        });
+        document.getElementById('codeReceivedInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); 
+                handleCheckAndSave();
+            }
         });
     </script>
 </body>
