@@ -40,9 +40,12 @@
             font-size: 18px;
             border-bottom: 1px solid #eee;
             padding-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
-        /* จัดวางช่องกรอกน้ำหนักถัง กับ ช่องโค้ดให้อยู่แถวเดียวกัน */
+        /* แถวช่องกรอกน้ำหนักถัง กับ ช่องโค้ด */
         .input-row {
             display: flex;
             gap: 8px;
@@ -50,7 +53,7 @@
             align-items: center;
         }
         
-        /* ดีไซน์กล่อง ถัง...KG ด้านหน้า */
+        /* กล่อง ถัง...KG ด้านหน้า */
         .kg-container {
             display: flex;
             align-items: center;
@@ -74,7 +77,7 @@
             outline: none;
             padding: 0;
         }
-        /* ซ่อนลูกศรของช่องตัวเลข */
+        /* ซ่อนลูกศรช่องตัวเลข */
         .kg-container input::-webkit-outer-spin-button,
         .kg-container input::-webkit-inner-spin-button {
             -webkit-appearance: none;
@@ -105,8 +108,27 @@
             font-weight: 600;
             cursor: pointer;
         }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+
+        /* ปุ่มแดงรีเซ็ตข้อมูล */
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-danger:hover {
+            background-color: #bd2130;
+        }
         
-        /* ปรับแต่งตารางให้มี 3 คอลัมน์ครบถ้วน ไม่เบี้ยว */
+        /* ตาราง 3 คอลัมน์สมบูรณ์ */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -150,7 +172,10 @@
         </div>
 
         <div class="card">
-            <h2>โค้ดที่เคยบันทึก</h2>
+            <h2>
+                <span>โค้ดที่เคยบันทึก</span>
+                <button class="btn-danger" onclick="clearAllData()">รีเซ็ตข้อมูลทั้งหมด</button>
+            </h2>
             
             <table>
                 <thead>
@@ -170,7 +195,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // กำหนดค่าคอนฟิก Firebase โปรเจกต์ Cheknumber
+        // ใช้กุญแจเชื่อมโยงกับฐานข้อมูลโปรเจกต์เดิมของคุณ
         const firebaseConfig = {
             apiKey: "AIzaSyAvq7VPJ6g04DsySxqkzyoVh3f9CRWrmzc",
             authDomain: "cheknumber-254eb.firebaseapp.com",
@@ -184,7 +209,10 @@
 
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-        const codesRef = database.ref('savedCodes'); // อ้างอิงโฟลเดอร์เก็บข้อมูลหลัก
+        const codesRef = database.ref('savedCodes');
+
+        // ตัวแปรส่วนกลางสำหรับเก็บข้อมูลไว้เช็กโค้ดซ้ำ
+        let allRawData = {};
 
         // ฟังก์ชันบันทึกข้อมูล
         function handleCheckAndSave() {
@@ -193,6 +221,13 @@
             
             if (!inputVal) {
                 alert('กรุณากรอกโค้ดก่อนครับ');
+                return;
+            }
+
+            // 🔍 ระบบตรวจโค้ดซ้ำ: เช็กว่ามีโค้ดนี้อยู่แล้วในฐานข้อมูลหรือไม่
+            const isDuplicate = Object.values(allRawData).some(item => item.code === inputVal);
+            if (isDuplicate) {
+                alert('⚠️ มีโค้ดนี้ในระบบอยู่แล้วครับ!');
                 return;
             }
 
@@ -205,15 +240,28 @@
                 dateString: dateString,
                 timestamp: now.getTime()
             }).then(() => {
-                document.getElementById('codeInput').value = ''; // ล้างแค่ช่องรหัสโค้ดตามความสะดวกใช้งาน
+                document.getElementById('codeInput').value = ''; // ล้างเฉพาะช่องกรอกโค้ด
             }).catch((error) => {
                 alert('เกิดข้อผิดพลาด: ' + error.message);
             });
         }
 
-        // ดึงข้อมูลมาแสดงผลในตารางแบบเรียลไทม์
+        // ฟังก์ชันล้างข้อมูลเก่าทั้งหมดออกจาก Firebase (เมื่อกดปุ่มสีแดง)
+        function clearAllData() {
+            if (confirm('⚠️ คุณแน่ใจใช่ไหมที่จะล้างข้อมูลรหัสทั้งหมดในระบบ? ข้อมูลเก่าทั้งหมดจะถูกลบถาวรเพื่อเริ่มต้นใหม่ครับ')) {
+                codesRef.remove()
+                    .then(() => {
+                        alert('⚡ รีเซ็ตระบบและล้างข้อมูลเก่าเรียบร้อยแล้วครับ!');
+                    })
+                    .catch((error) => {
+                        alert('เกิดข้อผิดพลาดในการรีเซ็ต: ' + error.message);
+                    });
+            }
+        }
+
+        // ซิงค์ข้อมูล Realtime มาแสดงผลในตาราง 3 คอลัมน์
         codesRef.on('value', (snapshot) => {
-            const allRawData = snapshot.val() || {};
+            allRawData = snapshot.val() || {};
             const tableBody = document.getElementById('historyTableBody');
             tableBody.innerHTML = '';
 
@@ -221,7 +269,7 @@
                 return { id: key, ...allRawData[key] };
             });
 
-            itemsArray.reverse(); // เรียงจากล่าสุดขึ้นก่อน
+            itemsArray.reverse(); // เอาล่าสุดขึ้นก่อน
 
             if (itemsArray.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="3" class="no-data">ไม่มีข้อมูลโค้ดที่บันทึกไว้</td></tr>`;
