@@ -143,6 +143,7 @@
             const now = new Date();
             const dateString = now.toLocaleString('th-TH', { hour12: false });
 
+            // --- [โหมดแก้ไข] อนุญาตให้แก้ไขค่ากิโลและปีหมดอายุได้อย่างอิสระ ---
             if (editId) {
                 codesRef.child(editId).update({
                     code: codeSoldVal, kg: kgVal || null, expiryYear: expiryVal || null,
@@ -155,7 +156,6 @@
 
             if (!codeSoldVal && !codeReceivedVal) return alert('กรุณากรอกโค้ดถัง');
             
-            // ตรวจสอบการมีอยู่ของถัง
             let soldKey = Object.keys(allRawData).find(k => allRawData[k].code == codeSoldVal);
             let receivedKey = Object.keys(allRawData).find(k => allRawData[k].code == codeReceivedVal);
 
@@ -163,17 +163,25 @@
                 if (!confirm('ไม่พบหมายเลขนี้ ต้องการเพิ่มหรือไม่?')) return;
             }
 
+            // บันทึกฝั่งถังขายออก
             if (codeSoldVal) {
                 justUpdatedCodes.push(codeSoldVal);
+                // ดึงค่าเก่ามาล็อกไว้ ถ้าไม่มีค่าเก่าถึงจะใช้ค่าจากหน้าต่างอินพุต
                 let expiry = (soldKey && allRawData[soldKey].expiryYear) ? allRawData[soldKey].expiryYear : expiryVal;
-                let data = { code: codeSoldVal, kg: kgVal || null, expiryYear: expiry || null, status: 'customer', ownerType: 'ours', dateString, timestamp: now.getTime() };
+                let kg = (soldKey && allRawData[soldKey].kg) ? allRawData[soldKey].kg : kgVal;
+                
+                let data = { code: codeSoldVal, kg: kg || null, expiryYear: expiry || null, status: 'customer', ownerType: 'ours', dateString, timestamp: now.getTime() };
                 soldKey ? codesRef.child(soldKey).update(data) : codesRef.push(data);
             }
 
+            // บันทึกฝั่งถังรับคืน
             if (codeReceivedVal) {
                 justUpdatedCodes.push(codeReceivedVal);
+                // ดึงค่าเก่ามาล็อกไว้ ถ้าไม่มีค่าเก่าถึงจะใช้ค่าจากหน้าต่างอินพุต
                 let expiry = (receivedKey && allRawData[receivedKey].expiryYear) ? allRawData[receivedKey].expiryYear : expiryVal;
-                let data = { code: codeReceivedVal, kg: kgVal || null, expiryYear: expiry || null, status: codeSoldVal ? 'empty' : 'full', ownerType: 'ours', dateString, timestamp: now.getTime() };
+                let kg = (receivedKey && allRawData[receivedKey].kg) ? allRawData[receivedKey].kg : kgVal;
+                
+                let data = { code: codeReceivedVal, kg: kg || null, expiryYear: expiry || null, status: codeSoldVal ? 'empty' : 'full', ownerType: 'ours', dateString, timestamp: now.getTime() };
                 receivedKey ? codesRef.child(receivedKey).update(data) : codesRef.push(data);
             }
             
