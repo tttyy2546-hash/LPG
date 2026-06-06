@@ -1,256 +1,10 @@
-<!DOCTYPE DOCTYPE>
-<html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบตรวจสอบและบันทึกโค้ด (Online Team)</title>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-    
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f6f9;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .container {
-            background-color: #ffffff;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 500px;
-            margin-bottom: 20px;
-            box-sizing: border-box;
-        }
-        h2 {
-            margin-top: 0;
-            color: #333;
-            font-size: 1.5rem;
-            border-bottom: 2px solid #eee;
-            padding-bottom: 10px;
-        }
-        .form-group { margin-bottom: 15px; }
-        input[type="text"] {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            box-sizing: border-box;
-            font-size: 1rem;
-        }
-        button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: bold;
-            transition: background 0.2s;
-        }
-        .btn-primary { background-color: #007bff; color: white; width: 100%; }
-        .btn-primary:hover { background-color: #0056b3; }
-        .btn-danger { background-color: #dc3545; color: white; }
-        .btn-danger:hover { background-color: #bd2130; }
-        .btn-success { background-color: #28a745; color: white; }
-        .btn-success:hover { background-color: #218838; }
-
-        .message-box {
-            margin-top: 15px;
-            padding: 12px;
-            border-radius: 6px;
-            display: none;
-            text-align: center;
-            font-weight: bold;
-        }
-        .error-msg { background-color: #f8d7da; color: #721c24; }
-        .success-msg { background-color: #d4edda; color: #155724; }
-
-        .action-buttons {
-            display: flex;
-            justify-content: space-around;
-            margin-top: 15px;
-            display: none;
-            gap: 10px;
-        }
-        .action-buttons button { flex: 1; }
-
-        .table-container {
-            max-height: 400px;
-            overflow-y: auto;
-            width: 100%;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 10px;
-            text-align: left;
-            transition: all 0.3s ease;
-        }
-        th { background-color: #f2f2f2; }
-        .highlight-row {
-            background-color: #fff3cd !important;
-            border: 2px solid #ffc107 !important;
-            transform: scale(1.01);
-        }
-    </style>
-</head>
-<body>
-
-    <div class="container">
-        <h2>ตรวจสอบโค้ด</h2>
-        <div class="form-group">
-            <input type="text" id="codeInput" placeholder="กรอกโค้ดที่ต้องการตรวจสอบ...">
-        </div>
-        <button class="btn-primary" id="verifyBtn" onclick="verifyCode()">ตรวจสอบ</button>
-
-        <div id="messageBox" class="message-box"></div>
-
-        <div id="actionButtons" class="action-buttons">
-            <button class="btn-danger" onclick="cancelAction()">ยกเลิก</button>
-            <button class="btn-success" onclick="addCode()">เพิ่มโค้ด</button>
-        </div>
-    </div>
-
-    <div class="container">
-        <h2>โค้ดที่เคยบันทึก</h2>
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>โค้ด</th>
-                        <th>วันที่บันทึกข้อมูล</th>
-                    </tr>
-                </thead>
-                <tbody id="historyTableBody">
-                    <tr><td colspan="2" style="text-align:center; color:#888;">กำลังเชื่อมต่อฐานข้อมูลออนไลน์...</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <script>
-        // 🛠️ เชื่อมต่อกับโปรเจกต์ Cheknumber ของคุณเรียบร้อยแล้ว
-        const firebaseConfig = {
-            apiKey: "AIzaSyAvq7VPJ6g04DsySxqkzyoVh3f9CRWrmzc",
-            authDomain: "cheknumber-254eb.firebaseapp.com",
-            databaseURL: "https://cheknumber-254eb-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "cheknumber-254eb",
-            storageBucket: "cheknumber-254eb.firebasestorage.app",
-            messagingSenderId: "63118189821",
-            appId: "1:63118189821:web:4794f2e26c839b1b654a94",
-            measurementId: "G-Y91480ZPNV"
-        };
-
-        // เริ่มทำงานระบบ Firebase
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-        const codesRef = database.ref();
-
-        let savedCodes = [];
-
-        // ซิงค์ข้อมูลจากคลาวด์มาแสดงผลแบบ Realtime
-        codesRef.on('value', (snapshot) => {
-            savedCodes = [];
-            const data = snapshot.val();
-            if (data) {
-                Object.keys(data).forEach(key => {
-                    savedCodes.push({
-                        id: key,
-                        code: data[key].code,
-                        date: data[key].date
-                    });
-                });
-            }
-            renderHistory();
-        });
-
-        // ฟังก์ชันวาดตารางแสดงข้อมูล
-        function renderHistory() {
-            const tableBody = document.getElementById('historyTableBody');
-            tableBody.innerHTML = '';
-
-            if (savedCodes.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="2" style="text-align:center; color:#888;">ไม่มีข้อมูลโค้ดที่บันทึกไว้</td></tr>`;
-                return;
-            }
-
-            savedCodes.forEach(item => {
-                const row = `<tr data-code="${item.code.toLowerCase()}">
-                    <td><strong>${item.code}</strong></td>
-                    <td>${item.date}</td>
-                </tr>`;
-                tableBody.innerHTML += row;
-            });
-        }
-
-        // ฟังก์ชันตรวจสอบโค้ด
-        function verifyCode() {
-            const inputVal = document.getElementById('codeInput').value.trim();
-            const messageBox = document.getElementById('messageBox');
-            const actionButtons = document.getElementById('actionButtons');
-
-            if (!inputVal) {
-                alert('กรุณากรอกโค้ดก่อนกดตรวจสอบครับ');
-                return;
-            }
-
-            clearHighlights();
-
-            const allRows = document.querySelectorAll('#historyTableBody tr');
-            let targetRow = null;
-
-            allRows.forEach(row => {
-                if (row.getAttribute('data-code') === inputVal.toLowerCase()) {
-                    targetRow = row;
-                }
-            });
-
-            if (targetRow) {
-                messageBox.className = "message-box success-msg";
-                messageBox.innerText = `พบโค้ด "${inputVal}" ในระบบเรียบร้อยแล้ว`;
-                messageBox.style.display = "block";
-                actionButtons.style.display = "none";
-
-                targetRow.classList.add('highlight-row');
-                targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            } else {
-                messageBox.className = "message-box error-msg";
-                messageBox.innerText = "ไม่มีโค้ดที่บันทึก";
-                messageBox.style.display = "block";
-                actionButtons.style.display = "flex"; 
-            }
-        }
-
-        // ฟังก์ชันเพิ่มข้อมูลขึ้นคลาวด์ออนไลน์
-        function addCode() {
-            const inputVal = document.getElementById('codeInput').value.trim();
-            if (!inputVal) return;
-
-            const now = new Date();
-            const formattedDate = now.toLocaleString('th-TH', { 
-                day: '2-digit', 
-                month: '2-digit', 
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            });
 <!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ระบบตรวจสอบโค้ด LPG</title>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             box-sizing: border-box;
@@ -259,7 +13,7 @@
         body {
             background-color: #f5f7fb;
             margin: 0;
-            padding: 15px;
+            padding: 12px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -273,278 +27,7 @@
             border-radius: 16px;
             padding: 20px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
-        }
-        h1, h2 {
-            margin-top: 0;
-            color: #2c3e50;
-            font-size: 22px;
-            font-weight: 700;
             margin-bottom: 15px;
-        }
-        h2 {
-            font-size: 18px;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-        }
-        .input-group {
-            margin-bottom: 15px;
-        }
-        input[type="text"] {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ced4da;
-            border-radius: 8px;
-            font-size: 16px;
-            outline: none;
-            transition: 0.3s;
-        }
-        input[type="text"]:focus {
-            border-color: #007bff;
-            box-shadow: 0 0 0 3px rgba(0,123,255,0.2);
-        }
-        .btn {
-            width: 100%;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .btn:hover {
-            background-color: #0056b3;
-        }
-        
-        /* โซนตัวกรอง เดือน/ปี */
-        .filter-section {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            background: #f8f9fa;
-            padding: 10px;
-            border-radius: 8px;
-        }
-        .filter-select {
-            flex: 1;
-            padding: 8px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-            font-size: 14px;
-            outline: none;
-            background-color: white;
-        }
-
-        /* ตารางแสดงผล */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-        th, td {
-            text-align: left;
-            padding: 10px;
-            font-size: 14px;
-            border-bottom: 1px solid #dee2e6;
-        }
-        th {
-            background-color: #f8f9fa;
-            color: #495057;
-            font-weight: 600;
-        }
-        tr:hover {
-            background-color: #fcfcfc;
-        }
-        .no-data {
-            text-align: center;
-            color: #6c757d;
-            padding: 20px;
-        }
-    </style>
-</head>
-<body>
-
-    <div class="container">
-        <div class="card">
-            <h1>ตรวจสอบโค้ด (ทีมออนไลน์)</h1>
-            <div class="input-group">
-                <input type="text" id="codeInput" placeholder="กรอกโค้ดที่ต้องการตรวจสอบ...">
-            </div>
-            <button class="btn" onclick="handleCheckAndSave()">ตรวจสอบ</button>
-        </div>
-
-        <div class="card">
-            <h2>โค้ดที่เคยบันทึกพร้อมวันที่</h2>
-            
-            <div class="filter-section">
-                <select id="filterMonth" class="filter-select" onchange="renderTable()">
-                    <option value="">-- เดือนทั้งหมด --</option>
-                    <option value="1">มกราคม</option>
-                    <option value="2">กุมภาพันธ์</option>
-                    <option value="3">มีนาคม</option>
-                    <option value="4">เมษายน</option>
-                    <option value="5">พฤษภาคม</option>
-                    <option value="6">มิถุนายน</option>
-                    <option value="7">กรกฎาคม</option>
-                    <option value="8">สิงหาคม</option>
-                    <option value="9">กันยายน</option>
-                    <option value="10">ตุลาคม</option>
-                    <option value="11">พฤศจิกายน</option>
-                    <option value="12">ธันวาคม</option>
-                </select>
-
-                <select id="filterYear" class="filter-select" onchange="renderTable()">
-                    <option value="">-- ปีทั้งหมด --</option>
-                    <option value="2026">2026 (2569)</option>
-                    <option value="2027">2027 (2570)</option>
-                    <option value="2025">2025 (2568)</option>
-                </select>
-            </div>
-
-            <table>
-                <thead>
-                    <tr>
-                        <th>โค้ด</th>
-                        <th>วันที่บันทึกข้อมูล</th>
-                    </tr>
-                </thead>
-                <tbody id="historyTableBody">
-                    </tbody>
-            </table>
-        </div>
-    </div>
-
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
-    <script>
-        // 🛠️ ล็อกกุญแจเชื่อมต่อโปรเจกต์ Cheknumber ของคุณเรียบร้อยแล้ว
-        const firebaseConfig = {
-            apiKey: "AIzaSyAvq7VPJ6g04DsySxqkzyoVh3f9CRWrmzc",
-            authDomain: "cheknumber-254eb.firebaseapp.com",
-            databaseURL: "https://cheknumber-254eb-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "cheknumber-254eb",
-            storageBucket: "cheknumber-254eb.firebasestorage.app",
-            messagingSenderId: "63118189821",
-            appId: "1:63118189821:web:4794f2e26c839b1b654a94",
-            measurementId: "G-Y91480ZPNV"
-        };
-
-        // เริ่มทำงานระบบ Firebase
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-        const codesRef = database.ref('savedCodes');
-
-        let allRawData = {}; // เก็บข้อมูลดิบทั้งหมดจากคลาวด์
-
-        // ฟังก์ชันเมื่อกดปุ่ม "ตรวจสอบ" เพื่อบันทึกข้อมูลลงคลาวด์
-        function handleCheckAndSave() {
-            const inputVal = document.getElementById('codeInput').value.trim();
-            if (!inputVal) {
-                alert('กรุณากรอกโค้ดก่อนครับ');
-                return;
-            }
-
-            const now = new Date();
-            const dateString = now.toLocaleString('th-TH', { hour12: false });
-            
-            // บันทึกแยกโครงสร้าง เดือน/ปี เพื่อให้ระบบใหม่กรองได้แม่นยำขึ้น
-            codesRef.push({
-                code: inputVal,
-                dateString: dateString,
-                timestamp: now.getTime(),
-                month: now.getMonth() + 1, // เก็บค่าเป็น 1 - 12
-                year: now.getFullYear()    // เก็บค่าคริสต์ศักราช เช่น 2026
-            }).then(() => {
-                document.getElementById('codeInput').value = ''; // ล้างช่องกรอกข้อมูล
-            }).catch((error) => {
-                alert('เกิดข้อผิดพลาดในการบันทึก: ' + error.message);
-            });
-        }
-
-        // ซิงค์ข้อมูลจากคลาวด์มาแสดงผลแบบ Realtime
-        codesRef.on('value', (snapshot) => {
-            allRawData = snapshot.val() || {};
-            renderTable(); // สั่งให้วาดตารางใหม่ทุกครั้งที่มีการอัปเดตข้อมูลหรือเปลี่ยนตัวกรอง
-        });
-
-        // ฟังก์ชันการกรองข้อมูลและวาดตารางแสดงผล
-        function renderTable() {
-            const tableBody = document.getElementById('historyTableBody');
-            tableBody.innerHTML = ''; // ล้างตารางเดิมก่อน
-
-            const selectedMonth = document.getElementById('filterMonth').value; // ค่าว่าง หรือ "1"-"12"
-            const selectedYear = document.getElementById('filterYear').value;   // ค่าว่าง หรือ "2026"
-
-            // แปลง Object ข้อมูลดิบให้กลายเป็น Array เพื่อนำมาจัดเรียงตามเวลาล่าสุดขึ้นก่อน
-            const itemsArray = Object.keys(allRawData).map(key => {
-                return { id: key, ...allRawData[key] };
-            });
-
-            // เรียงลำดับจากใหม่ล่าสุดไปเก่าสุด (อ้างอิงจากคีย์ของ Firebase หรือ timestamp)
-            itemsArray.reverse();
-
-            // กรองข้อมูลตามเดือนและปีที่ผู้ใช้เลือก
-            const filteredItems = itemsArray.filter(item => {
-                let itemMonth = item.month ? item.month.toString() : "";
-                let itemYear = item.year ? item.year.toString() : "";
-
-                // ระบบฉลาด: กรณีเป็นข้อมูลเก่าที่ไม่มีการบันทึก month/year แยกไว้ จะทำการแกะจากข้อความ dateString
-                if (!itemMonth && item.dateString) {
-                    const parts = item.dateString.split('/');
-                    if (parts.length >= 2) {
-                        itemMonth = parseInt(parts[1], 10).toString(); // ดึงเลขเดือนออกมา
-                    }
-                }
-                if (!itemYear && item.dateString) {
-                    const parts = item.dateString.split('/');
-                    if (parts.length >= 3) {
-                        // ดึงพาร์ทปีออกมา แล้วแปลงเป็น ค.ศ. เพื่อเปรียบเทียบมาตรฐานเดียวกัน
-                        let rawYear = parseInt(parts[2].split(' ')[0], 10);
-                        if (rawYear > 2500) rawYear = rawYear - 543; // ถ้าเป็น พ.ศ. ให้แปลงเป็น ค.ศ.
-                        itemYear = rawYear.toString();
-                    }
-                }
-
-                // ตรวจสอบเงื่อนไขตัวกรอง
-                const matchMonth = selectedMonth === "" || itemMonth === selectedMonth;
-                const matchYear = selectedYear === "" || itemYear === selectedYear;
-
-                return matchMonth && matchYear;
-            });
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบตรวจสอบโค้ด LPG</title>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            box-sizing: border-box;
-            font-family: 'Sarabun', sans-serif;
-        }
-        body {
-            background-color: #f5f7fb;
-            margin: 0;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .container {
-            width: 100%;
-            max-width: 500px;
-        }
-        .card {
-            background: #ffffff;
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
         }
         h1, h2 {
             margin-top: 0;
@@ -559,28 +42,29 @@
             padding-bottom: 10px;
         }
         
-        /* จัดวางช่องกรอกข้อมูลให้อยู่แถวเดียวกัน */
+        /* จัดวางช่องกรอกน้ำหนักถัง กับ ช่องโค้ดให้อยู่แถวเดียวกัน */
         .input-row {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             margin-bottom: 15px;
+            align-items: center;
         }
         
-        /* กล่องดีไซน์ ถัง...KG */
-        .kg-group {
+        /* ดีไซน์กล่อง ถัง...KG ด้านหน้า */
+        .kg-container {
             display: flex;
             align-items: center;
             border: 1px solid #ced4da;
             border-radius: 8px;
-            padding: 0 10px;
+            padding: 10px 8px;
             background: #f8f9fa;
             color: #495057;
             font-weight: 600;
-            font-size: 15px;
+            font-size: 14px;
             white-space: nowrap;
         }
-        .kg-group input {
-            width: 50px;
+        .kg-container input {
+            width: 45px;
             border: none;
             background: transparent;
             text-align: center;
@@ -588,15 +72,13 @@
             font-weight: 700;
             color: #007bff;
             outline: none;
+            padding: 0;
         }
-        /* ซ่อนลูกศรเพิ่มลดตัวเลขของช่อง KG */
-        .kg-group input::-webkit-outer-spin-button,
-        .kg-group input::-webkit-inner-spin-button {
+        /* ซ่อนลูกศรของช่องตัวเลข */
+        .kg-container input::-webkit-outer-spin-button,
+        .kg-container input::-webkit-inner-spin-button {
             -webkit-appearance: none;
             margin: 0;
-        }
-        .kg-group input[type=number] {
-            -moz-appearance: textfield;
         }
 
         /* ช่องกรอกโค้ด */
@@ -605,13 +87,11 @@
             padding: 12px;
             border: 1px solid #ced4da;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 15px;
             outline: none;
-            transition: 0.3s;
         }
         .code-input:focus {
             border-color: #007bff;
-            box-shadow: 0 0 0 3px rgba(0,123,255,0.2);
         }
 
         .btn {
@@ -619,36 +99,29 @@
             background-color: #007bff;
             color: white;
             border: none;
-            padding: 12px;
+            padding: 13px;
             border-radius: 8px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: 0.2s;
-        }
-        .btn:hover {
-            background-color: #0056b3;
         }
         
-        /* ตารางแสดงผล */
+        /* ปรับแต่งตารางให้มี 3 คอลัมน์ครบถ้วน ไม่เบี้ยว */
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
+            margin-top: 5px;
         }
         th, td {
             text-align: left;
-            padding: 10px;
-            font-size: 14px;
+            padding: 10px 6px;
+            font-size: 13px;
             border-bottom: 1px solid #dee2e6;
         }
         th {
             background-color: #f8f9fa;
             color: #495057;
             font-weight: 600;
-        }
-        tr:hover {
-            background-color: #fcfcfc;
         }
         .no-data {
             text-align: center;
@@ -661,12 +134,12 @@
 
     <div class="container">
         <div class="card">
-            <h1>ตรวจสอบโค้ด (ทีมออนไลน์)</h1>
+            <h1>ตรวจสอบโค้ด</h1>
             
             <div class="input-row">
-                <div class="kg-group">
+                <div class="kg-container">
                     <span>ถัง</span>
-                    <input type="number" id="kgInput" placeholder="0" min="0">
+                    <input type="number" id="kgInput" placeholder="0">
                     <span>KG</span>
                 </div>
                 
@@ -682,9 +155,9 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 30%;">ขนาดถัง</th>
-                        <th style="width: 35%;">โค้ด</th>
-                        <th style="width: 35%;">วันที่บันทึกข้อมูล</th>
+                        <th style="width: 28%;">ขนาดถัง</th>
+                        <th style="width: 36%;">โค้ด</th>
+                        <th style="width: 36%;">วันที่บันทึกข้อมูล</th>
                     </tr>
                 </thead>
                 <tbody id="historyTableBody">
@@ -697,7 +170,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // 🛠️ ตรึงกุญแจเชื่อมต่อโปรเจกต์ Cheknumber ของคุณ
+        // กำหนดค่าคอนฟิก Firebase โปรเจกต์ Cheknumber
         const firebaseConfig = {
             apiKey: "AIzaSyAvq7VPJ6g04DsySxqkzyoVh3f9CRWrmzc",
             authDomain: "cheknumber-254eb.firebaseapp.com",
@@ -709,14 +182,11 @@
             measurementId: "G-Y91480ZPNV"
         };
 
-        // เริ่มทำงานระบบ Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-        const codesRef = database.ref('savedCodes'); // ใช้โฟลเดอร์หลักเดิมตามในตู้เซฟคุณ
+        const codesRef = database.ref('savedCodes'); // อ้างอิงโฟลเดอร์เก็บข้อมูลหลัก
 
-        let allRawData = {}; 
-
-        // ฟังก์ชันเมื่อกดปุ่ม "ตรวจสอบ" เพื่อบันทึกข้อมูลลง Firebase
+        // ฟังก์ชันบันทึกข้อมูล
         function handleCheckAndSave() {
             const kgVal = document.getElementById('kgInput').value.trim();
             const inputVal = document.getElementById('codeInput').value.trim();
@@ -729,59 +199,47 @@
             const now = new Date();
             const dateString = now.toLocaleString('th-TH', { hour12: false });
             
-            // บันทึกทั้งรหัสโค้ด และ ขนาดถังแก๊สไปพร้อมกัน
             codesRef.push({
                 code: inputVal,
-                kg: kgVal ? kgVal : null, // ถ้าไม่ได้กรอกเลขถัง จะบันทึกเป็นค่าว่างไว้
+                kg: kgVal ? kgVal : null,
                 dateString: dateString,
                 timestamp: now.getTime()
             }).then(() => {
-                document.getElementById('codeInput').value = ''; // ล้างช่องกรอกโค้ด
-                // หมายเหตุ: จงใจไม่ล้างช่องเลขถัง KG เผื่อทีมงานตรวจถังขนาดเดิมต่อเนื่อง จะได้ไม่ต้องกดพิมพ์เลขซ้ำ ๆ ครับ
+                document.getElementById('codeInput').value = ''; // ล้างแค่ช่องรหัสโค้ดตามความสะดวกใช้งาน
             }).catch((error) => {
-                alert('เกิดข้อผิดพลาดในการบันทึก: ' + error.message);
+                alert('เกิดข้อผิดพลาด: ' + error.message);
             });
         }
 
-        // ดึงข้อมูลเวอร์ชันเดิมกลับมาแสดงผล Realtime (ป้องกันปัญหารหัสหาย)
+        // ดึงข้อมูลมาแสดงผลในตารางแบบเรียลไทม์
         codesRef.on('value', (snapshot) => {
-            allRawData = snapshot.val() || {};
-            renderTable(); 
-        });
-
-        // ฟังก์ชันวาดตารางแบบเรียบง่ายและปลอดภัยต่อข้อมูลเก่า
-        function renderTable() {
+            const allRawData = snapshot.val() || {};
             const tableBody = document.getElementById('historyTableBody');
-            tableBody.innerHTML = ''; // ล้างตารางเดิมก่อน
+            tableBody.innerHTML = '';
 
-            // แปลงข้อมูลเป็น Array เพื่อเรียงลำดับเวลาล่าสุดขึ้นก่อน
             const itemsArray = Object.keys(allRawData).map(key => {
                 return { id: key, ...allRawData[key] };
             });
 
-            itemsArray.reverse(); // เอาล่าสุดขึ้นก่อน
+            itemsArray.reverse(); // เรียงจากล่าสุดขึ้นก่อน
 
             if (itemsArray.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="3" class="no-data">ไม่มีข้อมูลโค้ดที่บันทึกไว้</td></tr>`;
                 return;
             }
 
-            // แสดงผลลงตารางเรียงตามคอลัมน์ ขนาดถัง | โค้ด | วันที่
             itemsArray.forEach(item => {
                 const row = document.createElement('tr');
-                
-                // ถ้ารหัสเก่าไม่มีขนาดถัง ให้โชว์เป็นเครื่องหมาย - แทน
-                const kgDisplay = item.kg ? `ถัง <strong>${item.kg}</strong> KG` : '-';
+                const kgDisplay = item.kg ? `${item.kg} KG` : '-';
                 
                 row.innerHTML = `
                     <td>${kgDisplay}</td>
                     <td><strong>${item.code || ''}</strong></td>
-                    <td>${item.dateString || ''}</td>
+                    <td style="color: #666; font-size: 12px;">${item.dateString || ''}</td>
                 `;
                 tableBody.appendChild(row);
             });
-        }
+        });
     </script>
 </body>
 </html>
-
