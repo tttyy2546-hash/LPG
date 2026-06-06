@@ -81,8 +81,9 @@
                     <label style="color: #007bff;">🎨 สถานะถัง:</label>
                     <select id="statusInput" class="code-input" style="width: 100%; height: 45px;">
                         <option value="full">🟢 ถังเต็ม</option>
+                        <option value="internal">🔵 ใช้ภายในบริษัท</option>
                         <option value="customer">🟡 อยู่กับลูกค้า</option>
-                        <option value="internal">🔵 ใช้ภายในบริษัท</option> <option value="empty">🔴 ถังเปล่า</option>
+                        <option value="empty">🔴 ถังเปล่า</option>
                     </select>
                 </div>
 
@@ -120,7 +121,8 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="text-align: center; width: 35px;"><input type="checkbox" id="selectAllEmpty" onchange="toggleSelectAllEmpty(this)"></th> <th>ขนาด</th>
+                        <th style="text-align: center; width: 35px;"><input type="checkbox" id="selectAllEmpty" onchange="toggleSelectAllEmpty(this)"></th>
+                        <th>ขนาด</th>
                         <th>โค้ด</th>
                         <th>หมดอายุ</th>
                         <th>สถานะ</th>
@@ -170,7 +172,7 @@
             const expiryVal = document.getElementById('expiryInput').value.trim();
             const codeSoldVal = document.getElementById('codeSoldInput').value.trim();
             const codeReceivedVal = document.getElementById('codeReceivedInput').value.trim();
-            const isInternal = document.getElementById('internalCheckbox').checked; // เช็คสถานะช่องติ๊กใช้ภายใน
+            const isInternal = document.getElementById('internalCheckbox').checked; 
             const now = new Date();
             const dateString = now.toLocaleString('th-TH', { hour12: false });
 
@@ -197,8 +199,6 @@
                 triggerHighlight(codeSoldVal);
                 let expiry = (soldKey && allRawData[soldKey].expiryYear) ? allRawData[soldKey].expiryYear : expiryVal;
                 let kg = (soldKey && allRawData[soldKey].kg) ? allRawData[soldKey].kg : kgVal;
-                
-                // [ปรับเงื่อนไข]: ถ้าเลือกติ๊กใช้ภายใน ให้สถานะถังจ่ายออกกลายเป็น 'internal' ทันที
                 let targetStatus = isInternal ? 'internal' : 'customer';
                 
                 let data = { code: codeSoldVal, kg: kg || null, expiryYear: expiry || null, status: targetStatus, ownerType: 'ours', dateString, timestamp: now.getTime() };
@@ -215,7 +215,7 @@
             
             document.getElementById('codeSoldInput').value = '';
             document.getElementById('codeReceivedInput').value = '';
-            document.getElementById('internalCheckbox').checked = false; // รีเซ็ตช่องติ๊กใช้ภายในหลังบันทึกสำเร็จ
+            document.getElementById('internalCheckbox').checked = false; 
         }
 
         function checkExpired(item, currentYearBE) {
@@ -227,13 +227,11 @@
             return false;
         }
 
-        // [เพิ่มฟีเจอร์]: ระบบเลือกถังเปล่าทั้งหมด / ยกเลิกทั้งหมด
         function toggleSelectAllEmpty(master) {
             const checkboxes = document.querySelectorAll('.empty-tank-cb');
             checkboxes.forEach(cb => cb.checked = master.checked);
         }
 
-        // [เพิ่มฟีเจอร์]: ระบบตรวจสอบการติ๊กถูกรายถัง เพื่อปิด/เปิด ตัวเลือกหัวตารางให้สัมพันธ์กัน
         function checkSelectAllState() {
             const allBoxes = document.querySelectorAll('.empty-tank-cb');
             const checkedBoxes = document.querySelectorAll('.empty-tank-cb:checked');
@@ -242,7 +240,6 @@
             else master.checked = (allBoxes.length === checkedBoxes.length);
         }
 
-        // [เพิ่มฟีเจอร์]: ระบบประมวลผลเปลี่ยนถังเปล่าเป็นถังเต็มยกชุด (Bulk Refill) พร้อมแจ้งเตือนยืนยัน
         function handleBulkRefill() {
             const checkedBoxes = document.querySelectorAll('.empty-tank-cb:checked');
             if (checkedBoxes.length === 0) {
@@ -281,20 +278,30 @@
 
             const currentYearBE = new Date().getFullYear() + 543;
 
+            // [อัปเดตตัวแปร]: กำหนดน้ำหนักคะแนนสถานะ ถังเต็ม(1) > ใช้ภายใน(2) > อยู่กับลูกค้า(3) > ถังเปล่า(4)
+            const statusPriority = { 'full': 1, 'internal': 2, 'customer': 3, 'empty': 4 };
+
+            // [อัปเดตระบบจัดเรียงขั้นสูง]: ล็อกกลุ่มน้ำหนัก แล้วเรียงสถานะข้างในกลุ่มตามเงื่อนไข
             items.sort((a, b) => {
-                const expA = checkExpired(a, currentYearBE);
-                const expB = checkExpired(b, currentYearBE);
-
-                if (expA !== expB) return expA ? 1 : -1;
-
+                // เงื่อนไขที่ 1: แยกกลุ่มตามน้ำหนักถังก่อน (จากมากไปน้อย เช่น 48 > 15 > 4)
                 const kgA = parseFloat(a.kg) || 0;
                 const kgB = parseFloat(b.kg) || 0;
                 if (kgB !== kgA) return kgB - kgA;
 
+                // เงื่อนไขที่ 2: ในน้ำหนักเดียวกัน ถังหมดอายุจะถูกดันไปอยู่ล่างสุดของกลุ่มน้ำหนักนั้นๆ
+                const expA = checkExpired(a, currentYearBE);
+                const expB = checkExpired(b, currentYearBE);
+                if (expA !== expB) return expA ? 1 : -1;
+
+                // เงื่อนไขที่ 3: เรียงลำดับสถานะ ถังเต็ม > ใช้ภายใน > อยู่กับลูกค้า > ถังเปล่า
+                const pA = statusPriority[a.status] || 99;
+                const pB = statusPriority[b.status] || 99;
+                if (pA !== pB) return pA - pB;
+
+                // เงื่อนไขที่ 4: ถ้าทุกอย่างเท่ากัน ให้รายการอัปเดตล่าสุดขึ้นก่อน
                 return (b.timestamp || 0) - (a.timestamp || 0);
             });
 
-            // เคลียร์ติ๊กถูกที่หัวตารางทุกครั้งที่วาดตารางใหม่เพื่อป้องกันข้อมูลค้างลอย
             document.getElementById('selectAllEmpty').checked = false;
 
             items.forEach(item => {
@@ -313,13 +320,11 @@
                     expiryDisplay = `<span style="color: #dc3545; font-weight: bold;">${item.expiryYear}</span>`;
                 }
 
-                // สวิตช์คำแสดงสถานะให้รองรับ "ใช้ภายใน" 
                 let statusText = 'เปล่า';
                 if (item.status === 'full') statusText = 'เต็ม';
                 else if (item.status === 'customer') statusText = 'ลูกค้า';
                 else if (item.status === 'internal') statusText = 'ใช้ภายใน';
 
-                // [ปรับปรุงระบบตาราง]: ตรวจสอบสิทธิ์แสดงกล่องติ๊กถูกเฉพาะถังเปล่า (empty) เท่านั้น
                 let checkboxHTML = '';
                 if (item.status === 'empty') {
                     checkboxHTML = `<input type="checkbox" class="table-cb empty-tank-cb" data-id="${item.id}" onchange="checkSelectAllState()">`;
@@ -359,7 +364,7 @@
             document.getElementById('statusBlock').style.display = 'block';
             document.getElementById('ownerTypeBlock').style.display = 'block';
             document.getElementById('receivedBlock').style.display = 'none';
-            document.getElementById('internalUseBlock').style.display = 'none'; // ซ่อนช่องติ๊กหน้าแรกตอนแก้ไข เพราะใช้ Dropdown แทนได้เลย
+            document.getElementById('internalUseBlock').style.display = 'none'; 
             document.getElementById('submitBtn').innerText = 'บันทึกการแก้ไข';
             document.getElementById('cancelEditBtn').style.display = 'block';
 
@@ -374,7 +379,7 @@
             document.getElementById('statusBlock').style.display = 'none';
             document.getElementById('ownerTypeBlock').style.display = 'none';
             document.getElementById('receivedBlock').style.display = 'block';
-            document.getElementById('internalUseBlock').style.display = 'block'; // เรียกช่องติ๊กหน้าแรกคืนมา
+            document.getElementById('internalUseBlock').style.display = 'block'; 
             document.getElementById('submitBtn').innerText = 'บันทึกข้อมูล';
             document.getElementById('cancelEditBtn').style.display = 'none';
         }
