@@ -60,7 +60,7 @@
                     <input type="number" id="kgInput" placeholder="0">
                     <span>KG</span>
                 </div>
-                <input type="text" id="expiryInput" class="code-input" placeholder="ปีหมดอายุ (อัปเดตเฉพาะถังรับคืน)...">
+                <input type="text" id="expiryInput" class="code-input" placeholder="ปีหมดอายุ...">
             </div>
             
             <div id="formFieldsContainer">
@@ -79,10 +79,10 @@
                 </div>
 
                 <div class="field-block" id="ownerTypeBlock" style="display: none; margin-top: 10px;">
-                    <label style="color: #28a745;">🏷️ สัญชาติถัง:</label>
+                    <label style="color: #28a745;">🏷️ เจ้าของถัง:</label>
                     <select id="ownerTypeInput" class="code-input" style="width: 100%; height: 45px; font-size: 18px;">
-                        <option value="ours">🟢</option>
-                        <option value="received">🔴</option>
+                        <option value="ours">🟢 ถังเรา (สีเขียว)</option>
+                        <option value="received">🔴 ถังลูกค้า (สีแดง)</option>
                     </select>
                 </div>
                 
@@ -174,6 +174,7 @@
             if (!codeSoldVal && !codeReceivedVal) { alert('กรุณากรอกรหัสถังที่ขาย หรือรหัสถังที่รับมา อย่างน้อย 1 ช่องครับ'); return; }
             justUpdatedCodes = []; 
 
+            // 1. กรณีบันทึกถังฝั่งสีเขียว (ขายออก)
             if (codeSoldVal) {
                 justUpdatedCodes.push(codeSoldVal);
                 let foundKey = null;
@@ -187,13 +188,23 @@
                         ownerType: 'ours', 
                         dateString: dateString,
                         timestamp: now.getTime(),
-                        kg: kgVal ? kgVal : (allRawData[foundKey].kg || null)
+                        kg: kgVal ? kgVal : (allRawData[foundKey].kg || null),
+                        expiryYear: expiryVal ? expiryVal : (allRawData[foundKey].expiryYear || null)
                     });
                 } else {
-                    codesRef.push({ code: codeSoldVal, kg: kgVal ? kgVal : null, expiryYear: null, status: 'customer', ownerType: 'ours', dateString: dateString, timestamp: now.getTime() });
+                    codesRef.push({ 
+                        code: codeSoldVal, 
+                        kg: kgVal ? kgVal : null, 
+                        expiryYear: expiryVal ? expiryVal : null, 
+                        status: 'customer', 
+                        ownerType: 'ours', 
+                        dateString: dateString, 
+                        timestamp: now.getTime() 
+                    });
                 }
             }
 
+            // 2. กรณีบันทึกถังฝั่งสีเหลือง (รับคืน)
             if (codeReceivedVal) {
                 justUpdatedCodes.push(codeReceivedVal);
                 let foundKey = null;
@@ -201,17 +212,27 @@
                     if (String(allRawData[key].code || '').trim().toLowerCase() === String(codeReceivedVal).trim().toLowerCase()) foundKey = key;
                 });
 
+                const targetStatus = codeSoldVal ? 'empty' : 'full';
+
                 if (foundKey) {
                     codesRef.child(foundKey).update({
-                        status: 'empty',
-                        ownerType: 'received', 
+                        status: targetStatus,
+                        ownerType: 'ours', // [อัปเดต]: เปลี่ยนเป็นถังเรา(สีเขียว) เสมอเมื่อคีย์ช่องเหลือง
                         dateString: dateString,
                         timestamp: now.getTime(),
                         kg: kgVal ? kgVal : (allRawData[foundKey].kg || null),
                         expiryYear: expiryVal ? expiryVal : (allRawData[foundKey].expiryYear || null)
                     });
                 } else {
-                    codesRef.push({ code: codeReceivedVal, kg: kgVal ? kgVal : null, expiryYear: expiryVal ? expiryVal : null, status: 'empty', ownerType: 'received', dateString: dateString, timestamp: now.getTime() });
+                    codesRef.push({ 
+                        code: codeReceivedVal, 
+                        kg: kgVal ? kgVal : null, 
+                        expiryYear: expiryVal ? expiryVal : null, 
+                        status: targetStatus, 
+                        ownerType: 'ours', // [อัปเดต]: เปลี่ยนเป็นถังเรา(สีเขียว) เสมอเมื่อคีย์ช่องเหลือง
+                        dateString: dateString, 
+                        timestamp: now.getTime() 
+                    });
                 }
             }
 
