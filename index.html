@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบตรวจสอบและบันทึกข้อมูลถัง LPG</title>
+    <title>ระบบจัดการถัง LPG (Pro)</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -19,30 +19,25 @@
         .kg-container input::-webkit-outer-spin-button, .kg-container input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .code-input { flex: 1; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 15px; outline: none; }
         .code-input:focus { border-color: #007bff; }
-        select.code-input { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23495057' viewBox='0 0 16 16'><path d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/></svg>"); background-repeat: no-repeat; background-position: calc(100% - 12px) center; padding-right: 35px; cursor: pointer; }
         .field-block { margin-bottom: 12px; }
         .field-block label { display: block; font-size: 13px; font-weight: 600; color: #495057; margin-bottom: 5px; }
         .btn-group { display: flex; gap: 8px; width: 100%; margin-top: 5px; }
         .btn { flex: 1; background-color: #007bff; color: white; border: none; padding: 13px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s; }
         .btn:hover { background-color: #0056b3; }
         .btn-cancel { background-color: #6c757d; max-width: 100px; }
-        .btn-cancel:hover { background-color: #545b62; }
         .btn-danger { background-color: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
-        .btn-danger:hover { background-color: #bd2130; }
-        .status-badge { padding: 6px 4px; border-radius: 20px; font-size: 11px; font-weight: bold; width: 100%; text-align: center; display: block; box-shadow: 0 2px 4px rgba(0,0,0,0.05); user-select: none; }
+        .status-badge { padding: 6px 4px; border-radius: 20px; font-size: 11px; font-weight: bold; width: 100%; text-align: center; display: block; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .status-full { background-color: #28a745; color: white; }
         .status-customer { background-color: #ffc107; color: #212529; }
         .status-empty { background-color: #dc3545; color: white; }
-        .kg-badge { padding: 5px 2px; border-radius: 6px; font-weight: 700; display: block; text-align: center; font-size: 11px; box-shadow: inset 0 0 2px rgba(0,0,0,0.05); }
+        .kg-badge { padding: 5px 2px; border-radius: 6px; font-weight: 700; display: block; text-align: center; font-size: 11px; }
         .kg-ours { background-color: #e2f0d9; color: #276a3e; border-left: 4px solid #28a745; }
         .kg-received { background-color: #fce4d6; color: #a53e1b; border-left: 4px solid #dc3545; }
         .btn-action { background: none; border: none; cursor: pointer; font-size: 14px; padding: 4px; border-radius: 4px; }
         .btn-edit { color: #007bff; }
-        .btn-edit:hover { background-color: rgba(0, 123, 255, 0.1); }
         .btn-delete { color: #dc3545; }
-        .btn-delete:hover { background-color: rgba(220, 53, 69, 0.1); }
         table { width: 100%; border-collapse: collapse; margin-top: 5px; }
-        th, td { text-align: left; padding: 10px 2px; font-size: 12px; border-bottom: 1px solid #dee2e6; vertical-align: middle; }
+        th, td { text-align: left; padding: 10px 2px; font-size: 12px; border-bottom: 1px solid #dee2f6; vertical-align: middle; }
         th { background-color: #f8f9fa; color: #495057; font-weight: 600; }
         .no-data { text-align: center; color: #6c757d; padding: 20px; }
         @keyframes highlightFlash { 0% { background-color: #fff3cd; } 50% { background-color: #ffda6a; } 100% { background-color: transparent; } }
@@ -65,35 +60,35 @@
             
             <div id="formFieldsContainer">
                 <div class="field-block" id="soldBlock">
-                    <label id="soldLabel">🟢 รหัสถังที่ขาย (ถังเต็ม ➡️ จะเปลี่ยนเป็นสีเหลือง อยู่กับลูกค้า)</label>
-                    <input type="text" id="codeSoldInput" class="code-input" style="width: 100%;" placeholder="กรอกหรือสแกนโค้ดถังที่ขายออก...">
+                    <label id="soldLabel">🟢 รหัสถังที่ขาย (ถังเต็ม ➡️ อยู่กับลูกค้า)</label>
+                    <input type="text" id="codeSoldInput" class="code-input" style="width: 100%;" placeholder="สแกนโค้ดถังที่ขาย...">
                 </div>
                 
                 <div class="field-block" id="statusBlock" style="display: none;">
                     <label style="color: #007bff;">🎨 สถานะถัง:</label>
                     <select id="statusInput" class="code-input" style="width: 100%; height: 45px;">
-                        <option value="full">🟢 ถังเต็ม (สีเขียว)</option>
-                        <option value="customer">🟡 อยู่กับลูกค้า (สีเหลือง)</option>
-                        <option value="empty">🔴 ถังเปล่า (สีแดง)</option>
+                        <option value="full">🟢 ถังเต็ม</option>
+                        <option value="customer">🟡 อยู่กับลูกค้า</option>
+                        <option value="empty">🔴 ถังเปล่า</option>
                     </select>
                 </div>
 
                 <div class="field-block" id="ownerTypeBlock" style="display: none; margin-top: 10px;">
                     <label style="color: #28a745;">🏷️ เจ้าของถัง:</label>
-                    <select id="ownerTypeInput" class="code-input" style="width: 100%; height: 45px; font-size: 18px;">
-                        <option value="ours">🟢 ถังเรา (สีเขียว)</option>
-                        <option value="received">🔴 ถังลูกค้า (สีแดง)</option>
+                    <select id="ownerTypeInput" class="code-input" style="width: 100%; height: 45px;">
+                        <option value="ours">🟢 ถังเรา</option>
+                        <option value="received">🔴 ถังลูกค้า</option>
                     </select>
                 </div>
                 
                 <div class="field-block" id="receivedBlock">
-                    <label>🟡 รหัสถังที่รับมา (ถังคืนจากลูกค้า ➡️ จะเปลี่ยนเป็นสีแดง ถังเปล่า)</label>
-                    <input type="text" id="codeReceivedInput" class="code-input" style="width: 100%;" placeholder="กรอกหรือสแกนโค้ดถังที่รับคืนมา...">
+                    <label>🟡 รหัสถังที่รับมา (ถังคืนจากลูกค้า)</label>
+                    <input type="text" id="codeReceivedInput" class="code-input" style="width: 100%;" placeholder="สแกนโค้ดถังที่รับคืน...">
                 </div>
             </div>
             
             <div class="btn-group">
-                <button class="btn" id="submitBtn" onclick="handleCheckAndSave()">บันทึกข้อมูลการขาย</button>
+                <button class="btn" id="submitBtn" onclick="handleCheckAndSave()">บันทึกข้อมูล</button>
                 <button class="btn btn-cancel" id="cancelEditBtn" onclick="cancelEdit()" style="display: none;">ยกเลิก</button>
             </div>
         </div>
@@ -101,17 +96,19 @@
         <div class="card">
             <h2>
                 <span>สถานะและประวัติถัง</span>
-                <button class="btn-danger" onclick="clearAllData()">รีเซ็ตทั้งหมด</button>
+                <button class="btn-danger" onclick="clearAllData()">รีเซ็ต</button>
             </h2>
+            <div class="field-block">
+                <input type="text" id="searchInput" class="code-input" style="width: 100%; border-color: #007bff;" placeholder="🔍 ค้นหาโค้ดถังที่นี่...">
+            </div>
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 16%;">ขนาด</th>
-                        <th style="width: 24%;">โค้ดถัง</th>
-                        <th style="width: 14%;">หมดอายุ</th>
-                        <th style="width: 20%;">วันที่อัปเดต</th>
-                        <th style="width: 18%; text-align: center;">สถานะถัง</th>
-                        <th style="width: 8%; text-align: center;">ลบ</th>
+                        <th>ขนาด</th>
+                        <th>โค้ด</th>
+                        <th>หมดอายุ</th>
+                        <th>สถานะ</th>
+                        <th>ลบ</th>
                     </tr>
                 </thead>
                 <tbody id="historyTableBody"></tbody>
@@ -130,134 +127,94 @@
             projectId: "cheknumber-254eb",
             storageBucket: "cheknumber-254eb.firebasestorage.app",
             messagingSenderId: "63118189821",
-            appId: "1:63118189821:web:4794f2e26c839b1b654a94",
-            measurementId: "G-Y91480ZPNV"
+            appId: "1:63118189821:web:4794f2e26c839b1b654a94"
         };
-
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const codesRef = database.ref('savedCodes');
 
-        let allRawData = {};
-        let editId = null; 
-        let justUpdatedCodes = []; 
+        let allRawData = {}, editId = null, justUpdatedCodes = [];
 
         function handleCheckAndSave() {
             const kgVal = document.getElementById('kgInput').value.trim();
             const expiryVal = document.getElementById('expiryInput').value.trim();
             const codeSoldVal = document.getElementById('codeSoldInput').value.trim();
             const codeReceivedVal = document.getElementById('codeReceivedInput').value.trim();
-            
             const now = new Date();
             const dateString = now.toLocaleString('th-TH', { hour12: false });
 
             if (editId) {
-                if (!codeSoldVal) { alert('กรุณากรอกรหัสถังด้วยครับ'); return; }
-                const selectedStatus = document.getElementById('statusInput').value;
-                const selectedOwner = document.getElementById('ownerTypeInput').value;
-
                 codesRef.child(editId).update({
-                    code: codeSoldVal,
-                    kg: kgVal ? kgVal : (allRawData[editId].kg || null),
-                    expiryYear: expiryVal ? expiryVal : (allRawData[editId].expiryYear || null),
-                    status: selectedStatus, 
-                    ownerType: selectedOwner, 
-                    dateString: dateString,  
-                    timestamp: now.getTime() 
-                }).then(() => {
-                    justUpdatedCodes = [codeSoldVal];
-                    cancelEdit();
-                }).catch((error) => alert('เกิดข้อผิดพลาด: ' + error.message));
+                    code: codeSoldVal, kg: kgVal || null, expiryYear: expiryVal || null,
+                    status: document.getElementById('statusInput').value,
+                    ownerType: document.getElementById('ownerTypeInput').value,
+                    dateString, timestamp: now.getTime()
+                }).then(() => { justUpdatedCodes = [codeSoldVal]; cancelEdit(); });
                 return;
             }
 
-            if (!codeSoldVal && !codeReceivedVal) { alert('กรุณากรอกรหัสถังที่ขาย หรือรหัสถังที่รับมา อย่างน้อย 1 ช่องครับ'); return; }
-            justUpdatedCodes = []; 
+            if (!codeSoldVal && !codeReceivedVal) return alert('กรุณากรอกโค้ดถัง');
+            
+            // ตรวจสอบการมีอยู่ของถัง
+            let soldKey = Object.keys(allRawData).find(k => allRawData[k].code == codeSoldVal);
+            let receivedKey = Object.keys(allRawData).find(k => allRawData[k].code == codeReceivedVal);
 
-            // 1. กรณีบันทึกถังฝั่งสีเขียว (ขายออก)
+            if ((codeSoldVal && !soldKey) || (codeReceivedVal && !receivedKey)) {
+                if (!confirm('ไม่พบหมายเลขนี้ ต้องการเพิ่มหรือไม่?')) return;
+            }
+
             if (codeSoldVal) {
                 justUpdatedCodes.push(codeSoldVal);
-                let foundKey = null;
-                Object.keys(allRawData).forEach(key => {
-                    if (String(allRawData[key].code || '').trim().toLowerCase() === String(codeSoldVal).trim().toLowerCase()) foundKey = key;
-                });
-
-                if (foundKey) {
-                    codesRef.child(foundKey).update({
-                        status: 'customer',
-                        ownerType: 'ours', 
-                        dateString: dateString,
-                        timestamp: now.getTime(),
-                        kg: kgVal ? kgVal : (allRawData[foundKey].kg || null),
-                        expiryYear: expiryVal ? expiryVal : (allRawData[foundKey].expiryYear || null)
-                    });
-                } else {
-                    codesRef.push({ 
-                        code: codeSoldVal, 
-                        kg: kgVal ? kgVal : null, 
-                        expiryYear: expiryVal ? expiryVal : null, 
-                        status: 'customer', 
-                        ownerType: 'ours', 
-                        dateString: dateString, 
-                        timestamp: now.getTime() 
-                    });
-                }
+                let expiry = (soldKey && allRawData[soldKey].expiryYear) ? allRawData[soldKey].expiryYear : expiryVal;
+                let data = { code: codeSoldVal, kg: kgVal || null, expiryYear: expiry || null, status: 'customer', ownerType: 'ours', dateString, timestamp: now.getTime() };
+                soldKey ? codesRef.child(soldKey).update(data) : codesRef.push(data);
             }
 
-            // 2. กรณีบันทึกถังฝั่งสีเหลือง (รับคืน)
             if (codeReceivedVal) {
                 justUpdatedCodes.push(codeReceivedVal);
-                let foundKey = null;
-                Object.keys(allRawData).forEach(key => {
-                    if (String(allRawData[key].code || '').trim().toLowerCase() === String(codeReceivedVal).trim().toLowerCase()) foundKey = key;
-                });
-
-                const targetStatus = codeSoldVal ? 'empty' : 'full';
-
-                if (foundKey) {
-                    codesRef.child(foundKey).update({
-                        status: targetStatus,
-                        ownerType: 'ours', // [อัปเดต]: เปลี่ยนเป็นถังเรา(สีเขียว) เสมอเมื่อคีย์ช่องเหลือง
-                        dateString: dateString,
-                        timestamp: now.getTime(),
-                        kg: kgVal ? kgVal : (allRawData[foundKey].kg || null),
-                        expiryYear: expiryVal ? expiryVal : (allRawData[foundKey].expiryYear || null)
-                    });
-                } else {
-                    codesRef.push({ 
-                        code: codeReceivedVal, 
-                        kg: kgVal ? kgVal : null, 
-                        expiryYear: expiryVal ? expiryVal : null, 
-                        status: targetStatus, 
-                        ownerType: 'ours', // [อัปเดต]: เปลี่ยนเป็นถังเรา(สีเขียว) เสมอเมื่อคีย์ช่องเหลือง
-                        dateString: dateString, 
-                        timestamp: now.getTime() 
-                    });
-                }
+                let expiry = (receivedKey && allRawData[receivedKey].expiryYear) ? allRawData[receivedKey].expiryYear : expiryVal;
+                let data = { code: codeReceivedVal, kg: kgVal || null, expiryYear: expiry || null, status: codeSoldVal ? 'empty' : 'full', ownerType: 'ours', dateString, timestamp: now.getTime() };
+                receivedKey ? codesRef.child(receivedKey).update(data) : codesRef.push(data);
             }
-
+            
             document.getElementById('codeSoldInput').value = '';
             document.getElementById('codeReceivedInput').value = '';
         }
 
+        function renderTable() {
+            const tableBody = document.getElementById('historyTableBody');
+            tableBody.innerHTML = '';
+            const searchVal = document.getElementById('searchInput').value.toLowerCase();
+            let items = Object.keys(allRawData).map(k => ({id: k, ...allRawData[k]}));
+            
+            if (searchVal) items = items.filter(i => String(i.code).toLowerCase().includes(searchVal));
+
+            items.sort((a,b) => b.timestamp - a.timestamp).forEach(item => {
+                const row = document.createElement('tr');
+                if (justUpdatedCodes.includes(item.code)) row.className = 'highlight-row';
+                row.innerHTML = `
+                    <td><span class="kg-badge ${item.ownerType=='received'?'kg-received':'kg-ours'}">${item.kg||'-'} KG</span></td>
+                    <td><button class="btn-action btn-edit" onclick="startEdit('${item.id}')"><i class="fas fa-edit"></i></button> ${item.code}</td>
+                    <td>${item.expiryYear||'-'}</td>
+                    <td><span class="status-badge status-${item.status}">${item.status=='full'?'เต็ม':item.status=='customer'?'ลูกค้า':'เปล่า'}</span></td>
+                    <td><button class="btn-action btn-delete" onclick="deleteData('${item.id}')"><i class="fas fa-trash-alt"></i></button></td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
         function startEdit(id) {
-            const item = allRawData[id];
-            if (!item) return;
-            editId = id;
+            editId = id; const item = allRawData[id];
             document.getElementById('kgInput').value = item.kg || '';
             document.getElementById('expiryInput').value = item.expiryYear || '';
             document.getElementById('codeSoldInput').value = item.code || '';
-            document.getElementById('statusInput').value = item.status || 'full';
-            document.getElementById('ownerTypeInput').value = item.ownerType || 'ours';
-            document.getElementById('formTitle').innerText = '✏️ แก้ไขข้อมูลและสถานะถัง';
-            document.getElementById('soldLabel').innerText = 'รหัสถังที่ต้องการแก้ไข:';
-            document.getElementById('statusBlock').style.display = 'block'; 
-            document.getElementById('ownerTypeBlock').style.display = 'block'; 
-            document.getElementById('receivedBlock').style.display = 'none'; 
+            document.getElementById('statusInput').value = item.status;
+            document.getElementById('ownerTypeInput').value = item.ownerType;
+            document.getElementById('statusBlock').style.display = 'block';
+            document.getElementById('ownerTypeBlock').style.display = 'block';
+            document.getElementById('receivedBlock').style.display = 'none';
             document.getElementById('submitBtn').innerText = 'บันทึกการแก้ไข';
-            document.getElementById('submitBtn').style.backgroundColor = '#28a745';
             document.getElementById('cancelEditBtn').style.display = 'block';
-            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         function cancelEdit() {
@@ -265,92 +222,18 @@
             document.getElementById('kgInput').value = '';
             document.getElementById('expiryInput').value = '';
             document.getElementById('codeSoldInput').value = '';
-            document.getElementById('codeReceivedInput').value = '';
-            document.getElementById('formTitle').innerText = 'บันทึกข้อมูลการเปลี่ยนถัง';
-            document.getElementById('soldLabel').innerText = '🟢 รหัสถังที่ขาย (ถังเต็ม ➡️ จะเปลี่ยนเป็นสีเหลือง อยู่กับลูกค้า)';
-            document.getElementById('statusBlock').style.display = 'none'; 
-            document.getElementById('ownerTypeBlock').style.display = 'none'; 
+            document.getElementById('statusBlock').style.display = 'none';
+            document.getElementById('ownerTypeBlock').style.display = 'none';
             document.getElementById('receivedBlock').style.display = 'block';
-            document.getElementById('submitBtn').innerText = 'บันทึกข้อมูลการขาย';
-            document.getElementById('submitBtn').style.backgroundColor = '#007bff';
+            document.getElementById('submitBtn').innerText = 'บันทึกข้อมูล';
             document.getElementById('cancelEditBtn').style.display = 'none';
         }
 
-        function deleteSingleData(id) {
-            if (confirm('คุณต้องการลบถังใบนี้ออกจากระบบใช่หรือไม่?')) {
-                if(editId === id) cancelEdit();
-                codesRef.child(id).remove().catch((error) => alert('เกิดข้อผิดพลาด: ' + error.message));
-            }
-        }
+        function deleteData(id) { if(confirm('ลบรายการนี้?')) codesRef.child(id).remove(); }
+        function clearAllData() { if(confirm('ล้างข้อมูลทั้งหมด?')) codesRef.remove(); }
 
-        function clearAllData() {
-            if (confirm('⚠️ คุณแน่ใจใช่ไหมที่จะล้างข้อมูลถังทั้งหมดในระบบ?')) {
-                cancelEdit();
-                codesRef.remove().catch((error) => alert('เกิดข้อผิดพลาด: ' + error.message));
-            }
-        }
-
-        codesRef.on('value', (snapshot) => {
-            allRawData = snapshot.val() || {};
-            const tableBody = document.getElementById('historyTableBody');
-            tableBody.innerHTML = '';
-            const itemsArray = Object.keys(allRawData).map(k => ({ id: k, ...allRawData[k] }));
-
-            itemsArray.sort((a, b) => {
-                const kgA = parseFloat(a.kg) || 0; const kgB = parseFloat(b.kg) || 0;
-                if (kgA !== kgB) return kgB - kgA;
-                const sw = { 'full': 1, 'customer': 2, 'empty': 3 };
-                if (sw[a.status] !== sw[b.status]) return sw[a.status] - sw[b.status];
-                return (b.timestamp || 0) - (a.timestamp || 0);
-            });
-
-            if (itemsArray.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="6" class="no-data">ไม่มีข้อมูลถังที่บันทึกไว้ในระบบ</td></tr>`;
-                return;
-            }
-
-            const cY_AD = new Date().getFullYear(); const cY_BE = cY_AD + 543;
-
-            itemsArray.forEach(item => {
-                const row = document.createElement('tr');
-                row.setAttribute('data-code', item.code || '');
-                if (justUpdatedCodes.includes(item.code)) row.className = 'highlight-row';
-
-                const kgDisplay = item.kg ? `${item.kg} KG` : '-';
-                const expiryDisplay = item.expiryYear ? item.expiryYear : '-';
-                const kgStyleClass = (item.ownerType === 'received') ? 'kg-badge kg-received' : 'kg-badge kg-ours';
-                
-                const expYear = parseInt(item.expiryYear);
-                let expiryStyle = 'font-weight: 600; color: #2c3e50;';
-                if (!isNaN(expYear) && ((expYear > 2100 && expYear < cY_BE) || (expYear <= 2100 && expYear < cY_AD))) {
-                    expiryStyle = 'font-weight: 700; color: #dc3545;';
-                }
-
-                let sBadge = `<span class="status-badge status-full">ถังเต็ม</span>`;
-                if (item.status === 'customer') sBadge = `<span class="status-badge status-customer">อยู่กับลูกค้า</span>`;
-                else if (item.status === 'empty') sBadge = `<span class="status-badge status-empty">ถังเปล่า</span>`;
-
-                row.innerHTML = `
-                    <td><span class="${kgStyleClass}">${kgDisplay}</span></td>
-                    <td><button class="btn-action btn-edit" onclick="startEdit('${item.id}')"><i class="fas fa-edit"></i></button> <strong>${item.code || ''}</strong></td>
-                    <td style="${expiryStyle}">${expiryDisplay}</td>
-                    <td style="color: #666; font-size: 11px;">${item.dateString || ''}</td>
-                    <td>${sBadge}</td>
-                    <td style="text-align: center;"><button class="btn-action btn-delete" onclick="deleteSingleData('${item.id}')"><i class="fas fa-trash-alt"></i></button></td>
-                `;
-                tableBody.appendChild(row);
-            });
-
-            if (justUpdatedCodes.length > 0) {
-                setTimeout(() => {
-                    justUpdatedCodes.forEach(c => { const r = document.querySelector(`tr[data-code="${CSS.escape(c)}"]`); if (r) r.classList.remove('highlight-row'); });
-                    justUpdatedCodes = [];
-                }, 3000);
-            }
-        });
-
-        document.getElementById('codeSoldInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); handleCheckAndSave(); } });
-        document.getElementById('codeReceivedInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); handleCheckAndSave(); } });
+        codesRef.on('value', (s) => { allRawData = s.val() || {}; renderTable(); });
+        document.getElementById('searchInput').addEventListener('input', renderTable);
     </script>
 </body>
 </html>
