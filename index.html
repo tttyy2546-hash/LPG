@@ -21,14 +21,19 @@
         .code-input:focus { border-color: #007bff; }
         .field-block { margin-bottom: 12px; }
         .field-block label { display: block; font-size: 13px; font-weight: 600; color: #495057; margin-bottom: 5px; }
+        .checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: #17a2b8; cursor: pointer; background: #e3f7fa; padding: 10px; border-radius: 8px; margin-bottom: 12px; }
+        .checkbox-label input { width: 18px; height: 18px; cursor: pointer; }
         .btn-group { display: flex; gap: 8px; width: 100%; margin-top: 5px; }
         .btn { flex: 1; background-color: #007bff; color: white; border: none; padding: 13px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s; }
         .btn:hover { background-color: #0056b3; }
         .btn-cancel { background-color: #6c757d; max-width: 100px; }
+        .btn-success { background-color: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .btn-success:hover { background-color: #218838; }
         .btn-danger { background-color: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
         .status-badge { padding: 6px 4px; border-radius: 20px; font-size: 11px; font-weight: bold; width: 100%; text-align: center; display: block; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .status-full { background-color: #28a745; color: white; }
         .status-customer { background-color: #ffc107; color: #212529; }
+        .status-internal { background-color: #17a2b8; color: white; }
         .status-empty { background-color: #dc3545; color: white; }
         .kg-badge { padding: 5px 2px; border-radius: 6px; font-weight: 700; display: block; text-align: center; font-size: 11px; }
         .kg-ours { background-color: #e2f0d9; color: #276a3e; border-left: 4px solid #28a745; }
@@ -42,12 +47,13 @@
         .no-data { text-align: center; color: #6c757d; padding: 20px; }
         @keyframes highlightFlash { 0% { background-color: #fff3cd; } 50% { background-color: #ffda6a; } 100% { background-color: transparent; } }
         .highlight-row { outline: 3px solid #ffc107 !important; outline-offset: -3px; background-color: #fffde7; }
+        .table-cb { width: 16px; height: 16px; cursor: pointer; display: block; margin: 0 auto; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <div class="card">
+        <div class="card" id="mainFormCard">
             <h1 id="formTitle">บันทึกข้อมูลการเปลี่ยนถัง</h1>
             <div class="input-row">
                 <div class="kg-container">
@@ -56,6 +62,13 @@
                     <span>KG</span>
                 </div>
                 <input type="text" id="expiryInput" class="code-input" placeholder="ปีหมดอายุ...">
+            </div>
+
+            <div id="internalUseBlock">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="internalCheckbox">
+                    <span>🏢 ใช้ภายในบริษัท (ถังจ่ายออกจะกลายเป็นสถานะใช้ภายใน)</span>
+                </label>
             </div>
             
             <div id="formFieldsContainer">
@@ -69,7 +82,7 @@
                     <select id="statusInput" class="code-input" style="width: 100%; height: 45px;">
                         <option value="full">🟢 ถังเต็ม</option>
                         <option value="customer">🟡 อยู่กับลูกค้า</option>
-                        <option value="empty">🔴 ถังเปล่า</option>
+                        <option value="internal">🔵 ใช้ภายในบริษัท</option> <option value="empty">🔴 ถังเปล่า</option>
                     </select>
                 </div>
 
@@ -96,7 +109,10 @@
         <div class="card">
             <h2>
                 <span>สถานะและประวัติถัง</span>
-                <button class="btn-danger" onclick="clearAllData()">รีเซ็ต</button>
+                <div>
+                    <button class="btn-success" id="bulkRefillBtn" onclick="handleBulkRefill()"><i class="fas fa-gas-pump"></i> เติมแก๊ส</button>
+                    <button class="btn-danger" onclick="clearAllData()">รีเซ็ต</button>
+                </div>
             </h2>
             <div class="field-block">
                 <input type="text" id="searchInput" class="code-input" style="width: 100%; border-color: #007bff;" placeholder="🔍 ค้นหาโค้ดถังที่นี่...">
@@ -104,7 +120,7 @@
             <table>
                 <thead>
                     <tr>
-                        <th>ขนาด</th>
+                        <th style="text-align: center; width: 35px;"><input type="checkbox" id="selectAllEmpty" onchange="toggleSelectAllEmpty(this)"></th> <th>ขนาด</th>
                         <th>โค้ด</th>
                         <th>หมดอายุ</th>
                         <th>สถานะ</th>
@@ -134,18 +150,19 @@
         const codesRef = database.ref('savedCodes');
 
         let allRawData = {}, editId = null;
-        let currentHighlightCode = null; // เก็บค่าโค้ดเดียวที่ต้องการทำไฮไลท์เหลืองด่วนล่าสุด
+        let currentHighlightCode = null;
         let highlightTimeout = null;
+        let shouldScrollToRow = false; 
 
-        // ฟังก์ชันช่วยจัดการคิวเปิด-ปิดไฮไลท์สีเหลืองอย่างแม่นยำ
         function triggerHighlight(code) {
             currentHighlightCode = code;
+            shouldScrollToRow = true; 
             renderTable();
             if (highlightTimeout) clearTimeout(highlightTimeout);
             highlightTimeout = setTimeout(() => {
                 currentHighlightCode = null;
                 renderTable();
-            }, 3000); // แสดงผลขอบเหลืองจากการบันทึก 3 วินาทีแล้วเคลียร์ออกซิงค์กับฐานข้อมูล
+            }, 3000);
         }
 
         function handleCheckAndSave() {
@@ -153,6 +170,7 @@
             const expiryVal = document.getElementById('expiryInput').value.trim();
             const codeSoldVal = document.getElementById('codeSoldInput').value.trim();
             const codeReceivedVal = document.getElementById('codeReceivedInput').value.trim();
+            const isInternal = document.getElementById('internalCheckbox').checked; // เช็คสถานะช่องติ๊กใช้ภายใน
             const now = new Date();
             const dateString = now.toLocaleString('th-TH', { hour12: false });
 
@@ -179,7 +197,11 @@
                 triggerHighlight(codeSoldVal);
                 let expiry = (soldKey && allRawData[soldKey].expiryYear) ? allRawData[soldKey].expiryYear : expiryVal;
                 let kg = (soldKey && allRawData[soldKey].kg) ? allRawData[soldKey].kg : kgVal;
-                let data = { code: codeSoldVal, kg: kg || null, expiryYear: expiry || null, status: 'customer', ownerType: 'ours', dateString, timestamp: now.getTime() };
+                
+                // [ปรับเงื่อนไข]: ถ้าเลือกติ๊กใช้ภายใน ให้สถานะถังจ่ายออกกลายเป็น 'internal' ทันที
+                let targetStatus = isInternal ? 'internal' : 'customer';
+                
+                let data = { code: codeSoldVal, kg: kg || null, expiryYear: expiry || null, status: targetStatus, ownerType: 'ours', dateString, timestamp: now.getTime() };
                 soldKey ? codesRef.child(soldKey).update(data) : codesRef.push(data);
             }
 
@@ -193,6 +215,60 @@
             
             document.getElementById('codeSoldInput').value = '';
             document.getElementById('codeReceivedInput').value = '';
+            document.getElementById('internalCheckbox').checked = false; // รีเซ็ตช่องติ๊กใช้ภายในหลังบันทึกสำเร็จ
+        }
+
+        function checkExpired(item, currentYearBE) {
+            const txt = String(item.expiryYear || '').trim();
+            if (txt.includes('หมดอายุ')) return true;
+            
+            const num = parseInt(txt.replace(/\D/g, ''));
+            if (!isNaN(num) && num < currentYearBE) return true;
+            return false;
+        }
+
+        // [เพิ่มฟีเจอร์]: ระบบเลือกถังเปล่าทั้งหมด / ยกเลิกทั้งหมด
+        function toggleSelectAllEmpty(master) {
+            const checkboxes = document.querySelectorAll('.empty-tank-cb');
+            checkboxes.forEach(cb => cb.checked = master.checked);
+        }
+
+        // [เพิ่มฟีเจอร์]: ระบบตรวจสอบการติ๊กถูกรายถัง เพื่อปิด/เปิด ตัวเลือกหัวตารางให้สัมพันธ์กัน
+        function checkSelectAllState() {
+            const allBoxes = document.querySelectorAll('.empty-tank-cb');
+            const checkedBoxes = document.querySelectorAll('.empty-tank-cb:checked');
+            const master = document.getElementById('selectAllEmpty');
+            if (allBoxes.length === 0) master.checked = false;
+            else master.checked = (allBoxes.length === checkedBoxes.length);
+        }
+
+        // [เพิ่มฟีเจอร์]: ระบบประมวลผลเปลี่ยนถังเปล่าเป็นถังเต็มยกชุด (Bulk Refill) พร้อมแจ้งเตือนยืนยัน
+        function handleBulkRefill() {
+            const checkedBoxes = document.querySelectorAll('.empty-tank-cb:checked');
+            if (checkedBoxes.length === 0) {
+                alert('⚠️ กรุณาติ๊กเลือกถังเปล่าที่ต้องการส่งเติมแก๊สก่อนครับ');
+                return;
+            }
+
+            if (confirm(`🔊 ยืนยันการส่งเติมแก๊ส:\nคุณต้องการเปลี่ยนสถานะถังเปล่าที่เลือกจำนวน ทั้งหมด ${checkedBoxes.length} ถัง ให้กลายเป็น "ถังเต็ม" ใช่หรือไม่?`)) {
+                const now = new Date();
+                const dateString = now.toLocaleString('th-TH', { hour12: false });
+                const updates = {};
+
+                checkedBoxes.forEach(cb => {
+                    const id = cb.getAttribute('data-id');
+                    updates[`/savedCodes/${id}/status`] = 'full';
+                    updates[`/savedCodes/${id}/dateString`] = dateString;
+                    updates[`/savedCodes/${id}/timestamp`] = now.getTime();
+                });
+
+                database.ref().update(updates)
+                    .then(() => {
+                        alert('✅ เปลี่ยนสถานะถังที่เลือกเป็น "ถังเต็ม" เรียบร้อยแล้วครับ!');
+                        document.getElementById('selectAllEmpty').checked = false;
+                    })
+                    .catch(err => alert('เกิดข้อผิดพลาด: ' + err.message));
+            }
         }
 
         function renderTable() {
@@ -203,22 +279,27 @@
             
             if (searchVal) items = items.filter(i => String(i.code).toLowerCase().includes(searchVal));
 
-            // [อัปเดตระบบเรียงลำดับลำดับถัง]: ล็อกเงื่อนไขเรียงขนาดกิโลจากมากไปน้อย 48 > 15 > 4
+            const currentYearBE = new Date().getFullYear() + 543;
+
             items.sort((a, b) => {
+                const expA = checkExpired(a, currentYearBE);
+                const expB = checkExpired(b, currentYearBE);
+
+                if (expA !== expB) return expA ? 1 : -1;
+
                 const kgA = parseFloat(a.kg) || 0;
                 const kgB = parseFloat(b.kg) || 0;
-                
-                if (kgB !== kgA) {
-                    return kgB - kgA; // เรียงลำหนักถังจากสูงลงต่ำ (48 -> 15 -> 4)
-                }
-                // ถ้าน้ำหนักถังเท่ากัน ให้เอารายการที่อัปเดตล่าสุดขึ้นก่อนตามเดิม
+                if (kgB !== kgA) return kgB - kgA;
+
                 return (b.timestamp || 0) - (a.timestamp || 0);
             });
+
+            // เคลียร์ติ๊กถูกที่หัวตารางทุกครั้งที่วาดตารางใหม่เพื่อป้องกันข้อมูลค้างลอย
+            document.getElementById('selectAllEmpty').checked = false;
 
             items.forEach(item => {
                 const row = document.createElement('tr');
                 
-                // [อัปเดตเงื่อนไขขอบเหลือง]: เช็คว่าตรงกับที่พิมพ์ค้นหาเป๊ะๆ หรือตรงกับถังที่เพิ่งยิงบันทึกเข้ามาล่าสุด
                 const isSearched = searchVal && String(item.code).toLowerCase() === searchVal;
                 const isJustUpdated = currentHighlightCode && String(item.code) === String(currentHighlightCode);
                 
@@ -226,15 +307,46 @@
                     row.className = 'highlight-row';
                 }
 
+                const isExpired = checkExpired(item, currentYearBE);
+                let expiryDisplay = item.expiryYear || '-';
+                if (item.expiryYear && isExpired) {
+                    expiryDisplay = `<span style="color: #dc3545; font-weight: bold;">${item.expiryYear}</span>`;
+                }
+
+                // สวิตช์คำแสดงสถานะให้รองรับ "ใช้ภายใน" 
+                let statusText = 'เปล่า';
+                if (item.status === 'full') statusText = 'เต็ม';
+                else if (item.status === 'customer') statusText = 'ลูกค้า';
+                else if (item.status === 'internal') statusText = 'ใช้ภายใน';
+
+                // [ปรับปรุงระบบตาราง]: ตรวจสอบสิทธิ์แสดงกล่องติ๊กถูกเฉพาะถังเปล่า (empty) เท่านั้น
+                let checkboxHTML = '';
+                if (item.status === 'empty') {
+                    checkboxHTML = `<input type="checkbox" class="table-cb empty-tank-cb" data-id="${item.id}" onchange="checkSelectAllState()">`;
+                } else {
+                    checkboxHTML = `<input type="checkbox" class="table-cb" disabled style="opacity: 0.2; cursor: not-allowed;">`;
+                }
+
                 row.innerHTML = `
+                    <td style="text-align: center;">${checkboxHTML}</td>
                     <td><span class="kg-badge ${item.ownerType=='received'?'kg-received':'kg-ours'}">${item.kg||'-'} KG</span></td>
                     <td><button class="btn-action btn-edit" onclick="startEdit('${item.id}')"><i class="fas fa-edit"></i></button> <b>${item.code}</b></td>
-                    <td>${item.expiryYear||'-'}</td>
-                    <td><span class="status-badge status-${item.status}">${item.status=='full'?'เต็ม':item.status=='customer'?'ลูกค้า':'เปล่า'}</span></td>
+                    <td>${expiryDisplay}</td>
+                    <td><span class="status-badge status-${item.status}">${statusText}</span></td>
                     <td><button class="btn-action btn-delete" onclick="deleteData('${item.id}')"><i class="fas fa-trash-alt"></i></button></td>
                 `;
                 tableBody.appendChild(row);
             });
+
+            if (shouldScrollToRow) {
+                const targetRow = tableBody.querySelector('.highlight-row');
+                if (targetRow) {
+                    setTimeout(() => {
+                        targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 80);
+                }
+                shouldScrollToRow = false; 
+            }
         }
 
         function startEdit(id) {
@@ -247,8 +359,11 @@
             document.getElementById('statusBlock').style.display = 'block';
             document.getElementById('ownerTypeBlock').style.display = 'block';
             document.getElementById('receivedBlock').style.display = 'none';
+            document.getElementById('internalUseBlock').style.display = 'none'; // ซ่อนช่องติ๊กหน้าแรกตอนแก้ไข เพราะใช้ Dropdown แทนได้เลย
             document.getElementById('submitBtn').innerText = 'บันทึกการแก้ไข';
             document.getElementById('cancelEditBtn').style.display = 'block';
+
+            document.getElementById('mainFormCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function cancelEdit() {
@@ -259,6 +374,7 @@
             document.getElementById('statusBlock').style.display = 'none';
             document.getElementById('ownerTypeBlock').style.display = 'none';
             document.getElementById('receivedBlock').style.display = 'block';
+            document.getElementById('internalUseBlock').style.display = 'block'; // เรียกช่องติ๊กหน้าแรกคืนมา
             document.getElementById('submitBtn').innerText = 'บันทึกข้อมูล';
             document.getElementById('cancelEditBtn').style.display = 'none';
         }
