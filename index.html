@@ -41,7 +41,7 @@
         th { background-color: #f8f9fa; color: #495057; font-weight: 600; }
         .no-data { text-align: center; color: #6c757d; padding: 20px; }
         @keyframes highlightFlash { 0% { background-color: #fff3cd; } 50% { background-color: #ffda6a; } 100% { background-color: transparent; } }
-        .highlight-row { animation: highlightFlash 1s ease-in-out 3; outline: 3px solid #ffc107 !important; outline-offset: -3px; }
+        .highlight-row { outline: 3px solid #ffc107 !important; outline-offset: -3px; background-color: #fffde7; }
     </style>
 </head>
 <body>
@@ -133,7 +133,20 @@
         const database = firebase.database();
         const codesRef = database.ref('savedCodes');
 
-        let allRawData = {}, editId = null, justUpdatedCodes = [];
+        let allRawData = {}, editId = null;
+        let currentHighlightCode = null; // เก็บค่าโค้ดเดียวที่ต้องการทำไฮไลท์เหลืองด่วนล่าสุด
+        let highlightTimeout = null;
+
+        // ฟังก์ชันช่วยจัดการคิวเปิด-ปิดไฮไลท์สีเหลืองอย่างแม่นยำ
+        function triggerHighlight(code) {
+            currentHighlightCode = code;
+            renderTable();
+            if (highlightTimeout) clearTimeout(highlightTimeout);
+            highlightTimeout = setTimeout(() => {
+                currentHighlightCode = null;
+                renderTable();
+            }, 3000); // แสดงผลขอบเหลืองจากการบันทึก 3 วินาทีแล้วเคลียร์ออกซิงค์กับฐานข้อมูล
+        }
 
         function handleCheckAndSave() {
             const kgVal = document.getElementById('kgInput').value.trim();
@@ -143,14 +156,13 @@
             const now = new Date();
             const dateString = now.toLocaleString('th-TH', { hour12: false });
 
-            // --- [โหมดแก้ไข] อนุญาตให้แก้ไขค่ากิโลและปีหมดอายุได้อย่างอิสระ ---
             if (editId) {
                 codesRef.child(editId).update({
                     code: codeSoldVal, kg: kgVal || null, expiryYear: expiryVal || null,
                     status: document.getElementById('statusInput').value,
                     ownerType: document.getElementById('ownerTypeInput').value,
                     dateString, timestamp: now.getTime()
-                }).then(() => { justUpdatedCodes = [codeSoldVal]; cancelEdit(); });
+                }).then(() => { triggerHighlight(codeSoldVal); cancelEdit(); });
                 return;
             }
 
@@ -163,24 +175,18 @@
                 if (!confirm('ไม่พบหมายเลขนี้ ต้องการเพิ่มหรือไม่?')) return;
             }
 
-            // บันทึกฝั่งถังขายออก
             if (codeSoldVal) {
-                justUpdatedCodes.push(codeSoldVal);
-                // ดึงค่าเก่ามาล็อกไว้ ถ้าไม่มีค่าเก่าถึงจะใช้ค่าจากหน้าต่างอินพุต
+                triggerHighlight(codeSoldVal);
                 let expiry = (soldKey && allRawData[soldKey].expiryYear) ? allRawData[soldKey].expiryYear : expiryVal;
                 let kg = (soldKey && allRawData[soldKey].kg) ? allRawData[soldKey].kg : kgVal;
-                
                 let data = { code: codeSoldVal, kg: kg || null, expiryYear: expiry || null, status: 'customer', ownerType: 'ours', dateString, timestamp: now.getTime() };
                 soldKey ? codesRef.child(soldKey).update(data) : codesRef.push(data);
             }
 
-            // บันทึกฝั่งถังรับคืน
             if (codeReceivedVal) {
-                justUpdatedCodes.push(codeReceivedVal);
-                // ดึงค่าเก่ามาล็อกไว้ ถ้าไม่มีค่าเก่าถึงจะใช้ค่าจากหน้าต่างอินพุต
+                triggerHighlight(codeReceivedVal);
                 let expiry = (receivedKey && allRawData[receivedKey].expiryYear) ? allRawData[receivedKey].expiryYear : expiryVal;
                 let kg = (receivedKey && allRawData[receivedKey].kg) ? allRawData[receivedKey].kg : kgVal;
-                
                 let data = { code: codeReceivedVal, kg: kg || null, expiryYear: expiry || null, status: codeSoldVal ? 'empty' : 'full', ownerType: 'ours', dateString, timestamp: now.getTime() };
                 receivedKey ? codesRef.child(receivedKey).update(data) : codesRef.push(data);
             }
@@ -192,17 +198,37 @@
         function renderTable() {
             const tableBody = document.getElementById('historyTableBody');
             tableBody.innerHTML = '';
-            const searchVal = document.getElementById('searchInput').value.toLowerCase();
+            const searchVal = document.getElementById('searchInput').value.trim().toLowerCase();
             let items = Object.keys(allRawData).map(k => ({id: k, ...allRawData[k]}));
             
             if (searchVal) items = items.filter(i => String(i.code).toLowerCase().includes(searchVal));
 
-            items.sort((a,b) => b.timestamp - a.timestamp).forEach(item => {
+            // [อัปเดตระบบเรียงลำดับลำดับถัง]: ล็อกเงื่อนไขเรียงขนาดกิโลจากมากไปน้อย 48 > 15 > 4
+            items.sort((a, b) => {
+                const kgA = parseFloat(a.kg) || 0;
+                const kgB = parseFloat(b.kg) || 0;
+                
+                if (kgB !== kgA) {
+                    return kgB - kgA; // เรียงลำหนักถังจากสูงลงต่ำ (48 -> 15 -> 4)
+                }
+                // ถ้าน้ำหนักถังเท่ากัน ให้เอารายการที่อัปเดตล่าสุดขึ้นก่อนตามเดิม
+                return (b.timestamp || 0) - (a.timestamp || 0);
+            });
+
+            items.forEach(item => {
                 const row = document.createElement('tr');
-                if (justUpdatedCodes.includes(item.code)) row.className = 'highlight-row';
+                
+                // [อัปเดตเงื่อนไขขอบเหลือง]: เช็คว่าตรงกับที่พิมพ์ค้นหาเป๊ะๆ หรือตรงกับถังที่เพิ่งยิงบันทึกเข้ามาล่าสุด
+                const isSearched = searchVal && String(item.code).toLowerCase() === searchVal;
+                const isJustUpdated = currentHighlightCode && String(item.code) === String(currentHighlightCode);
+                
+                if (isJustUpdated || isSearched) {
+                    row.className = 'highlight-row';
+                }
+
                 row.innerHTML = `
                     <td><span class="kg-badge ${item.ownerType=='received'?'kg-received':'kg-ours'}">${item.kg||'-'} KG</span></td>
-                    <td><button class="btn-action btn-edit" onclick="startEdit('${item.id}')"><i class="fas fa-edit"></i></button> ${item.code}</td>
+                    <td><button class="btn-action btn-edit" onclick="startEdit('${item.id}')"><i class="fas fa-edit"></i></button> <b>${item.code}</b></td>
                     <td>${item.expiryYear||'-'}</td>
                     <td><span class="status-badge status-${item.status}">${item.status=='full'?'เต็ม':item.status=='customer'?'ลูกค้า':'เปล่า'}</span></td>
                     <td><button class="btn-action btn-delete" onclick="deleteData('${item.id}')"><i class="fas fa-trash-alt"></i></button></td>
