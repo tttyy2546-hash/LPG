@@ -30,6 +30,13 @@
         .btn-success { background-color: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
         .btn-success:hover { background-color: #218838; }
         .btn-danger { background-color: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        
+        /* สไตล์สำหรับปุ่มฟังก์ชันใหม่ */
+        .btn-purple { background-color: #6f42c1; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .btn-purple:hover { background-color: #59359a; }
+        .btn-orange { background-color: #fd7e14; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .btn-orange:hover { background-color: #ca6510; }
+
         .status-badge { padding: 6px 4px; border-radius: 20px; font-size: 11px; font-weight: bold; width: 100%; text-align: center; display: block; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .status-full { background-color: #28a745; color: white; }
         .status-customer { background-color: #ffc107; color: #212529; }
@@ -50,8 +57,6 @@
         .table-cb { width: 16px; height: 16px; cursor: pointer; display: block; margin: 0 auto; }
 
         .summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 12px; }
-        
-        /* [ปรับปรุงสไตล์]: ทำให้แผงสรุปยอดกดได้ และมีการตอบสนองที่ดีขึ้น */
         .summary-box { background: #ffffff; border-radius: 8px; padding: 6px 2px; text-align: center; border: 1px solid #e9ecef; box-shadow: 0 2px 4px rgba(0,0,0,0.02); cursor: pointer; transition: transform 0.15s, box-shadow 0.15s, background-color 0.15s; }
         .summary-box:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.06); }
         .summary-title { font-size: 10px; font-weight: 600; color: #6c757d; margin-bottom: 3px; white-space: nowrap; pointer-events: none; }
@@ -62,14 +67,12 @@
         .sm-empty { border-top: 3px solid #dc3545; color: #dc3545; }
         .sm-expired { border-top: 3px solid #6f42c1; color: #6f42c1; }
 
-        /* [เพิ่มสไตล์]: ไฮไลท์เมื่อเลือกกล่องแดชบอร์ด */
         .summary-box.active-sm-full { background: #e2f0d9; border-color: #28a745; }
         .summary-box.active-sm-internal { background: #e3f7fa; border-color: #17a2b8; }
         .summary-box.active-sm-customer { background: #fff3cd; border-color: #ffc107; }
         .summary-box.active-sm-empty { background: #f8d7da; border-color: #dc3545; }
         .summary-box.active-sm-expired { background: #e2d9f3; border-color: #6f42c1; }
 
-        /* [เพิ่มสไตล์]: แผงขยายรายละเอียดขนาดน้ำหนักถัง */
         .breakdown-container { background: #f8f9fa; border-radius: 10px; padding: 12px; margin-bottom: 15px; border: 1px dashed #ced4da; display: none; animation: fadeIn 0.2s ease-in-out; }
         .breakdown-header { font-size: 12px; font-weight: 700; color: #495057; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
         .breakdown-list { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -138,8 +141,10 @@
         <div class="card">
             <h2>
                 <span>สถานะและประวัติถัง</span>
-                <div>
+                <div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end;">
                     <button class="btn-success" id="bulkRefillBtn" onclick="handleBulkRefill()"><i class="fas fa-gas-pump"></i> เติมแก๊ส</button>
+                    <button class="btn-purple" onclick="importPaperData()"><i class="fas fa-file-import"></i> นำเข้าถังใบงาน</button>
+                    <button class="btn-orange" onclick="cleanupOutsidePaper()"><i class="fas fa-broom"></i> เคลียร์ถังนอกใบงาน</button>
                     <button class="btn-danger" onclick="clearAllData()">รีเซ็ต</button>
                 </div>
             </h2>
@@ -209,25 +214,68 @@
         const codesRef = database.ref('savedCodes');
 
         let allRawData = {}, editId = null;
-        let currentHighlightCode = null;
+        let currentHighlightKey = null; 
         let highlightTimeout = null;
         let shouldScrollToRow = false; 
 
-        // [เพิ่มตัวแปร Global]: สำหรับเก็บสถานะแดชบอร์ดที่ถูกเลือกและข้อมูลสต็อกเชิงลึก
         let globalBreakdown = { full: {}, internal: {}, customer: {}, empty: {}, expired: {} };
         let activeSummaryType = null;
         let activeSummaryLabel = '';
         let activeSummaryClass = '';
 
-        function triggerHighlight(code) {
-            currentHighlightCode = code;
+        // ข้อมูลถังทั้งหมดจากใบงานกระดาษ 1991.jpg (เก็บเป็นเซ็ตกลางเพื่อใช้ตรวจสอบ)
+        const paperTanks = [
+            // ถังขนาด 48 KG (6 ถัง)
+            { kg: "48", expiryYear: "2573", code: "1656" }, { kg: "48", expiryYear: "2572", code: "7925" },
+            { kg: "48", expiryYear: "2571", code: "0330" }, { kg: "48", expiryYear: "2573", code: "5413" },
+            { kg: "48", expiryYear: "2573", code: "5833" }, { kg: "48", expiryYear: "2570", code: "1894" },
+            // ถังขนาด 15 KG (29 ถัง)
+            { kg: "15", expiryYear: "2574", code: "0792" }, { kg: "15", expiryYear: "2573", code: "9605" },
+            { kg: "15", expiryYear: "2574", code: "6674" }, { kg: "15", expiryYear: "2573", code: "0488" },
+            { kg: "15", expiryYear: "2573", code: "4665" }, { kg: "15", expiryYear: "2574", code: "4409" },
+            { kg: "15", expiryYear: "2573", code: "3700" }, { kg: "15", expiryYear: "2573", code: "2190" },
+            { kg: "15", expiryYear: "2573", code: "0823" }, { kg: "15", expiryYear: "2574", code: "1024" },
+            { kg: "15", expiryYear: "2570", code: "8911" }, { kg: "15", expiryYear: "2574", code: "7681" },
+            { kg: "15", expiryYear: "2570", code: "5701" }, { kg: "15", expiryYear: "2574", code: "6828" },
+            { kg: "15", expiryYear: "2574", code: "0801" }, { kg: "15", expiryYear: "2571", code: "3845" },
+            { kg: "15", expiryYear: "2569", code: "5066" }, { kg: "15", expiryYear: "2570", code: "1878" },
+            { kg: "15", expiryYear: "2569", code: "8814" }, { kg: "15", expiryYear: "2572", code: "3311" },
+            { kg: "15", expiryYear: "2573", code: "6753" }, { kg: "15", expiryYear: "2571", code: "4570" },
+            { kg: "15", expiryYear: "2573", code: "5003" }, { kg: "15", expiryYear: "2570", code: "8976" },
+            { kg: "15", expiryYear: "2573", code: "6982" }, { kg: "15", expiryYear: "2574", code: "0738" },
+            { kg: "15", expiryYear: "2570", code: "4356" }, { kg: "15", expiryYear: "2572", code: "9935" },
+            { kg: "15", expiryYear: "2571", code: "5686" },
+            // ถังขนาด 4 KG (18 ถัง)
+            { kg: "4", expiryYear: "2573", code: "0896" }, { kg: "4", expiryYear: "2570", code: "6829" },
+            { kg: "4", expiryYear: "2573", code: "9380" }, { kg: "4", expiryYear: "2573", code: "3416" },
+            { kg: "4", expiryYear: "2573", code: "2591" }, { kg: "4", expiryYear: "2574", code: "7802" },
+            { kg: "4", expiryYear: "2573", code: "0798" }, { kg: "4", expiryYear: "2573", code: "0915" },
+            { kg: "4", expiryYear: "2573", code: "0823" }, { kg: "4", expiryYear: "2573", code: "1768" },
+            { kg: "4", expiryYear: "2574", code: "7978" }, { kg: "4", expiryYear: "2573", code: "8230" },
+            { kg: "4", expiryYear: "2573", code: "9052" }, { kg: "4", expiryYear: "2573", code: "5234" },
+            { kg: "4", expiryYear: "2573", code: "3716" }, { kg: "4", expiryYear: "2570", code: "3215" },
+            { kg: "4", expiryYear: "2573", code: "8297" }, { kg: "4", expiryYear: "2573", code: "7691" }
+        ];
+
+        function triggerHighlight(key) {
+            currentHighlightKey = key;
             shouldScrollToRow = true; 
             renderTable();
             if (highlightTimeout) clearTimeout(highlightTimeout);
             highlightTimeout = setTimeout(() => {
-                currentHighlightCode = null;
+                currentHighlightKey = null;
                 renderTable();
             }, 3000);
+        }
+
+        function findTankKey(code, kg) {
+            if (!code) return null;
+            const keys = Object.keys(allRawData);
+            if (kg) {
+                return keys.find(k => allRawData[k].code == code && allRawData[k].kg == kg);
+            } else {
+                return keys.find(k => allRawData[k].code == code);
+            }
         }
 
         function handleCheckAndSave() {
@@ -245,40 +293,95 @@
                     status: document.getElementById('statusInput').value,
                     ownerType: document.getElementById('ownerTypeInput').value,
                     dateString, timestamp: now.getTime()
-                }).then(() => { triggerHighlight(codeSoldVal); cancelEdit(); });
+                }).then(() => { triggerHighlight(editId); cancelEdit(); });
                 return;
             }
 
             if (!codeSoldVal && !codeReceivedVal) return alert('กรุณากรอกโค้ดถัง');
             
-            let soldKey = Object.keys(allRawData).find(k => allRawData[k].code == codeSoldVal);
-            let receivedKey = Object.keys(allRawData).find(k => allRawData[k].code == codeReceivedVal);
+            let soldKey = findTankKey(codeSoldVal, kgVal);
+            let receivedKey = findTankKey(codeReceivedVal, kgVal);
 
             if ((codeSoldVal && !soldKey) || (codeReceivedVal && !receivedKey)) {
-                if (!confirm('ไม่พบหมายเลขนี้ ต้องการเพิ่มหรือไม่?')) return;
+                if (!confirm('ไม่พบหมายเลขถังขนาดนี้ในฐานข้อมูล ต้องการเพิ่มใหม่หรือไม่?')) return;
             }
 
             if (codeSoldVal) {
-                triggerHighlight(codeSoldVal);
                 let expiry = (soldKey && allRawData[soldKey].expiryYear) ? allRawData[soldKey].expiryYear : expiryVal;
                 let kg = (soldKey && allRawData[soldKey].kg) ? allRawData[soldKey].kg : kgVal;
                 let targetStatus = isInternal ? 'internal' : 'customer';
                 
                 let data = { code: codeSoldVal, kg: kg || null, expiryYear: expiry || null, status: targetStatus, ownerType: 'ours', dateString, timestamp: now.getTime() };
-                soldKey ? codesRef.child(soldKey).update(data) : codesRef.push(data);
+                if (soldKey) {
+                    codesRef.child(soldKey).update(data).then(() => triggerHighlight(soldKey));
+                } else {
+                    let newRef = codesRef.push(data);
+                    triggerHighlight(newRef.key);
+                }
             }
 
             if (codeReceivedVal) {
-                triggerHighlight(codeReceivedVal);
                 let expiry = (receivedKey && allRawData[receivedKey].expiryYear) ? allRawData[receivedKey].expiryYear : expiryVal;
                 let kg = (receivedKey && allRawData[receivedKey].kg) ? allRawData[receivedKey].kg : kgVal;
                 let data = { code: codeReceivedVal, kg: kg || null, expiryYear: expiry || null, status: codeSoldVal ? 'empty' : 'full', ownerType: 'ours', dateString, timestamp: now.getTime() };
-                receivedKey ? codesRef.child(receivedKey).update(data) : codesRef.push(data);
+                if (receivedKey) {
+                    codesRef.child(receivedKey).update(data).then(() => triggerHighlight(receivedKey));
+                } else {
+                    let newRef = codesRef.push(data);
+                    triggerHighlight(newRef.key);
+                }
             }
             
             document.getElementById('codeSoldInput').value = '';
             document.getElementById('codeReceivedInput').value = '';
             document.getElementById('internalCheckbox').checked = false; 
+        }
+
+        function importPaperData() {
+            if (!confirm('คุณต้องการนำเข้าข้อมูลถังแก๊สสถานะ "ถังเต็ม" จำนวนทั้งหมด 53 ถัง จากรูปใบงาน 1991.jpg ใช่หรือไม่?')) return;
+            
+            const now = new Date();
+            const dateString = now.toLocaleString('th-TH', { hour12: false });
+            let importedCount = 0;
+
+            paperTanks.forEach(tank => {
+                let isExist = Object.keys(allRawData).some(k => allRawData[k].code == tank.code && allRawData[k].kg == tank.kg);
+                if (!isExist) {
+                    codesRef.push({
+                        code: tank.code, kg: tank.kg, expiryYear: tank.expiryYear,
+                        status: 'full', ownerType: 'ours', dateString: dateString, timestamp: now.getTime()
+                    });
+                    importedCount++;
+                }
+            });
+            alert(`📥 นำเข้าข้อมูลสำเร็จเรียบร้อยครับ!\nเพิ่มถังใหม่เข้าสู่ระบบ: ${importedCount} ถัง`);
+        }
+
+        // [ฟังก์ชันใหม่]: ระบบเคลียร์และลบถังที่รหัสไม่มีในกระดาษ ยกเว้นถังใช้ภายใน และถังหมดอายุ
+        function cleanupOutsidePaper() {
+            if (!confirm('⚠️ ยืนยันการเคลียร์ข้อมูลถัง:\nคุณต้องการลบถังที่ "ไม่มีอยู่ในใบงานกระดาษ" ออกจากระบบใช่หรือไม่?\n\n*หมายเหตุ: ถังใช้ภายในบริษัท และถังหมดอายุ จะถูกยกเว้นไว้ไม่ถูกลบครับ*')) return;
+
+            const currentYearBE = new Date().getFullYear() + 543;
+            let deleteCount = 0;
+
+            Object.keys(allRawData).forEach(id => {
+                const item = allRawData[id];
+
+                // 1. เช็กว่าหมดอายุหรือไม่
+                const isExpired = checkExpired(item, currentYearBE);
+                // 2. เช็กว่าเป็นถังใช้ภายในบริษัทหรือไม่
+                const isInternal = (item.status === 'internal');
+                // 3. เช็กว่ารหัสคู่ขนาดถังนี้ มีอยู่ในใบงานกระดาษหรือไม่
+                const isInPaper = paperTanks.some(p => p.code == item.code && p.kg == item.kg);
+
+                // เงื่อนไข: ถ้าไม่อยู่ในใบงาน และไม่ใช่ถังใช้ภายใน และไม่ใช่ถังหมดอายุ -> ลบออกทันที
+                if (!isInPaper && !isInternal && !isExpired) {
+                    codesRef.child(id).remove();
+                    deleteCount++;
+                }
+            });
+
+            alert(`🧹 ระบบทำความสะอาดเรียบร้อยแล้ว!\nทำการลบถังที่อยู่นอกใบงานออกไปทั้งสิ้น: ${deleteCount} ถังครับ`);
         }
 
         function checkExpired(item, currentYearBE) {
@@ -331,7 +434,6 @@
             }
         }
 
-        // [เพิ่มฟังก์ชัน]: ควบคุมการ เปิด-ปิด และเปลี่ยนกลุ่มการแสดงผลสถิติน้ำหนักถัง
         function toggleBreakdown(type, label, cssClass) {
             document.querySelectorAll('.summary-box').forEach(box => {
                 box.classList.remove('active-sm-full', 'active-sm-internal', 'active-sm-customer', 'active-sm-empty', 'active-sm-expired');
@@ -352,7 +454,6 @@
             }
         }
 
-        // [เพิ่มฟังก์ชัน]: วาดข้อมูลน้ำหนักถังลงในกล่องขยายข้อมูล พร้อมคัดแยกและเรียงลำดับถังใหญ่ไปถังเล็ก
         function updateBreakdownUI() {
             const container = document.getElementById('breakdownCard');
             if (!activeSummaryType) {
@@ -368,13 +469,7 @@
             listEl.innerHTML = '';
             
             const data = globalBreakdown[activeSummaryType] || {};
-            
-            // เรียงลำดับน้ำหนักจากมากไปน้อย เช่น 48 KG > 15 KG > 4 KG (ถังไม่ระบุน้ำหนักอยู่หลังสุด)
-            const sortedWeights = Object.keys(data).sort((a, b) => {
-                const numA = parseFloat(a) || -1;
-                const numB = parseFloat(b) || -1;
-                return numB - numA;
-            });
+            const sortedWeights = Object.keys(data).sort((a, b) => (parseFloat(b) || -1) - (parseFloat(a) || -1));
             
             if (sortedWeights.length === 0) {
                 listEl.innerHTML = `<div style="color: #6c757d; font-size: 13px; width: 100%; text-align: center; padding: 10px;">ไม่มีข้อมูลถังในหมวดนี้</div>`;
@@ -396,10 +491,7 @@
             let items = Object.keys(allRawData).map(k => ({id: k, ...allRawData[k]}));
 
             const currentYearBE = new Date().getFullYear() + 543;
-
             let totalFull = 0, totalInternal = 0, totalCustomer = 0, totalEmpty = 0, totalExpired = 0;
-
-            // [อัปเดตระบบนับสต็อกลึก]: เคลียร์และคำนวณสถิติตัวแร่ใหม่ทุกครั้งเพื่อแจกแจงน้ำหนักรายสถานะแบบ Real-time
             globalBreakdown = { full: {}, internal: {}, customer: {}, empty: {}, expired: {} };
 
             Object.keys(allRawData).forEach(k => {
@@ -432,26 +524,18 @@
             document.getElementById('summaryEmptyCount').innerText = totalEmpty;
             document.getElementById('summaryExpiredCount').innerText = totalExpired;
             
-            // สั่งอัปเดตหน้าต่างย่อยด้านล่างทันทีหากกำลังเปิดค้างไว้
             updateBreakdownUI();
 
             if (searchVal) items = items.filter(i => String(i.code).toLowerCase().includes(searchVal));
 
             const statusPriority = { 'full': 1, 'internal': 2, 'customer': 3, 'empty': 4 };
-
             items.sort((a, b) => {
-                const kgA = parseFloat(a.kg) || 0;
-                const kgB = parseFloat(b.kg) || 0;
+                const kgA = parseFloat(a.kg) || 0; const kgB = parseFloat(b.kg) || 0;
                 if (kgB !== kgA) return kgB - kgA;
-
-                const expA = checkExpired(a, currentYearBE);
-                const expB = checkExpired(b, currentYearBE);
+                const expA = checkExpired(a, currentYearBE); const expB = checkExpired(b, currentYearBE);
                 if (expA !== expB) return expA ? 1 : -1;
-
-                const pA = statusPriority[a.status] || 99;
-                const pB = statusPriority[b.status] || 99;
+                const pA = statusPriority[a.status] || 99; const pB = statusPriority[b.status] || 99;
                 if (pA !== pB) return pA - pB;
-
                 return (b.timestamp || 0) - (a.timestamp || 0);
             });
 
@@ -459,13 +543,10 @@
 
             items.forEach(item => {
                 const row = document.createElement('tr');
-                
                 const isSearched = searchVal && String(item.code).toLowerCase() === searchVal;
-                const isJustUpdated = currentHighlightCode && String(item.code) === String(currentHighlightCode);
+                const isJustUpdated = currentHighlightKey && String(item.id) === String(currentHighlightKey);
                 
-                if (isJustUpdated || isSearched) {
-                    row.className = 'highlight-row';
-                }
+                if (isJustUpdated || isSearched) row.className = 'highlight-row';
 
                 const isExpired = checkExpired(item, currentYearBE);
                 let expiryDisplay = item.expiryYear || '-';
@@ -478,12 +559,9 @@
                 else if (item.status === 'customer') statusText = 'ลูกค้า';
                 else if (item.status === 'internal') statusText = 'ใช้ภายใน';
 
-                let checkboxHTML = '';
-                if (item.status === 'empty') {
-                    checkboxHTML = `<input type="checkbox" class="table-cb empty-tank-cb" data-id="${item.id}" onchange="checkSelectAllState()">`;
-                } else {
-                    checkboxHTML = `<input type="checkbox" class="table-cb" disabled style="opacity: 0.2; cursor: not-allowed;">`;
-                }
+                let checkboxHTML = (item.status === 'empty') ? 
+                    `<input type="checkbox" class="table-cb empty-tank-cb" data-id="${item.id}" onchange="checkSelectAllState()">` :
+                    `<input type="checkbox" class="table-cb" disabled style="opacity: 0.2; cursor: not-allowed;">`;
 
                 row.innerHTML = `
                     <td style="text-align: center;">${checkboxHTML}</td>
@@ -499,9 +577,7 @@
             if (shouldScrollToRow) {
                 const targetRow = tableBody.querySelector('.highlight-row');
                 if (targetRow) {
-                    setTimeout(() => {
-                        targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }, 80);
+                    setTimeout(() => { targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 80);
                 }
                 shouldScrollToRow = false; 
             }
@@ -520,7 +596,6 @@
             document.getElementById('internalUseBlock').style.display = 'none'; 
             document.getElementById('submitBtn').innerText = 'บันทึกการแก้ไข';
             document.getElementById('cancelEditBtn').style.display = 'block';
-
             document.getElementById('mainFormCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
