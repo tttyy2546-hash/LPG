@@ -48,6 +48,17 @@
         @keyframes highlightFlash { 0% { background-color: #fff3cd; } 50% { background-color: #ffda6a; } 100% { background-color: transparent; } }
         .highlight-row { outline: 3px solid #ffc107 !important; outline-offset: -3px; background-color: #fffde7; }
         .table-cb { width: 16px; height: 16px; cursor: pointer; display: block; margin: 0 auto; }
+
+        /* [เพิ่มสไตล์]: สำหรับแผง Dashboard สรุปยอดถัง */
+        .summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 15px; }
+        .summary-box { background: #ffffff; border-radius: 8px; padding: 6px 2px; text-align: center; border: 1px solid #e9ecef; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .summary-title { font-size: 10px; font-weight: 600; color: #6c757d; margin-bottom: 3px; white-space: nowrap; }
+        .summary-count { font-size: 15px; font-weight: 700; }
+        .sm-full { border-top: 3px solid #28a745; color: #28a745; }
+        .sm-internal { border-top: 3px solid #17a2b8; color: #17a2b8; }
+        .sm-customer { border-top: 3px solid #ffc107; color: #b58100; }
+        .sm-empty { border-top: 3px solid #dc3545; color: #dc3545; }
+        .sm-expired { border-top: 3px solid #6f42c1; color: #6f42c1; }
     </style>
 </head>
 <body>
@@ -115,6 +126,31 @@
                     <button class="btn-danger" onclick="clearAllData()">รีเซ็ต</button>
                 </div>
             </h2>
+
+            <!-- [เพิ่มฟีเจอร์]: แผงแสดงสรุปยอดจำนวนถังแต่ละประเภทแยกหมวดหมู่ชัดเจน -->
+            <div class="summary-grid">
+                <div class="summary-box sm-full">
+                    <div class="summary-title">🟢 เต็ม</div>
+                    <div class="summary-count" id="summaryFullCount">0</div>
+                </div>
+                <div class="summary-box sm-internal">
+                    <div class="summary-title">🔵 ในบริษัท</div>
+                    <div class="summary-count" id="summaryInternalCount">0</div>
+                </div>
+                <div class="summary-box sm-customer">
+                    <div class="summary-title">🟡 ลูกค้า</div>
+                    <div class="summary-count" id="summaryCustomerCount">0</div>
+                </div>
+                <div class="summary-box sm-empty">
+                    <div class="summary-title">🔴 เปล่า</div>
+                    <div class="summary-count" id="summaryEmptyCount">0</div>
+                </div>
+                <div class="summary-box sm-expired">
+                    <div class="summary-title">💜 หมดอายุ</div>
+                    <div class="summary-count" id="summaryExpiredCount">0</div>
+                </div>
+            </div>
+
             <div class="field-block">
                 <input type="text" id="searchInput" class="code-input" style="width: 100%; border-color: #007bff;" placeholder="🔍 ค้นหาโค้ดถังที่นี่...">
             </div>
@@ -273,32 +309,47 @@
             tableBody.innerHTML = '';
             const searchVal = document.getElementById('searchInput').value.trim().toLowerCase();
             let items = Object.keys(allRawData).map(k => ({id: k, ...allRawData[k]}));
-            
-            if (searchVal) items = items.filter(i => String(i.code).toLowerCase().includes(searchVal));
 
             const currentYearBE = new Date().getFullYear() + 543;
 
-            // [อัปเดตตัวแปร]: กำหนดน้ำหนักคะแนนสถานะ ถังเต็ม(1) > ใช้ภายใน(2) > อยู่กับลูกค้า(3) > ถังเปล่า(4)
+            // [เพิ่มฟีเจอร์]: ตัวแปรสำหรับคำนวณสรุปยอดสต็อกถังทั้งหมด (ดึงจากข้อมูลดิบจริง ไม่สน filter ค้นหาเพื่อให้ยอดนิ่งเสถียร)
+            let totalFull = 0, totalInternal = 0, totalCustomer = 0, totalEmpty = 0, totalExpired = 0;
+
+            Object.keys(allRawData).forEach(k => {
+                const item = allRawData[k];
+                if (item.status === 'full') totalFull++;
+                else if (item.status === 'internal') totalInternal++;
+                else if (item.status === 'customer') totalCustomer++;
+                else if (item.status === 'empty') totalEmpty++;
+
+                if (checkExpired(item, currentYearBE)) totalExpired++;
+            });
+
+            // อัปเดตยอดสะสมขึ้นแผงแดชบอร์ดด้านบน
+            document.getElementById('summaryFullCount').innerText = totalFull;
+            document.getElementById('summaryInternalCount').innerText = totalInternal;
+            document.getElementById('summaryCustomerCount').innerText = totalCustomer;
+            document.getElementById('summaryEmptyCount').innerText = totalEmpty;
+            document.getElementById('summaryExpiredCount').innerText = totalExpired;
+            
+            // คัดกรองผลลัพธ์ผ่านช่องค้นหา (ถ้ามี)
+            if (searchVal) items = items.filter(i => String(i.code).toLowerCase().includes(searchVal));
+
             const statusPriority = { 'full': 1, 'internal': 2, 'customer': 3, 'empty': 4 };
 
-            // [อัปเดตระบบจัดเรียงขั้นสูง]: ล็อกกลุ่มน้ำหนัก แล้วเรียงสถานะข้างในกลุ่มตามเงื่อนไข
             items.sort((a, b) => {
-                // เงื่อนไขที่ 1: แยกกลุ่มตามน้ำหนักถังก่อน (จากมากไปน้อย เช่น 48 > 15 > 4)
                 const kgA = parseFloat(a.kg) || 0;
                 const kgB = parseFloat(b.kg) || 0;
                 if (kgB !== kgA) return kgB - kgA;
 
-                // เงื่อนไขที่ 2: ในน้ำหนักเดียวกัน ถังหมดอายุจะถูกดันไปอยู่ล่างสุดของกลุ่มน้ำหนักนั้นๆ
                 const expA = checkExpired(a, currentYearBE);
                 const expB = checkExpired(b, currentYearBE);
                 if (expA !== expB) return expA ? 1 : -1;
 
-                // เงื่อนไขที่ 3: เรียงลำดับสถานะ ถังเต็ม > ใช้ภายใน > อยู่กับลูกค้า > ถังเปล่า
                 const pA = statusPriority[a.status] || 99;
                 const pB = statusPriority[b.status] || 99;
                 if (pA !== pB) return pA - pB;
 
-                // เงื่อนไขที่ 4: ถ้าทุกอย่างเท่ากัน ให้รายการอัปเดตล่าสุดขึ้นก่อน
                 return (b.timestamp || 0) - (a.timestamp || 0);
             });
 
