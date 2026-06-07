@@ -264,12 +264,21 @@
                 if (!confirm('ไม่พบหมายเลขถังขนาดนี้ในฐานข้อมูล ต้องการเพิ่มใหม่หรือไม่?')) return;
             }
 
+            // 1. จัดการฝั่งถังที่ขายไป (ถังเราสีเขียวเสมอ)
             if (codeSoldVal) {
                 let expiry = (soldKey && allRawData[soldKey].expiryYear) ? allRawData[soldKey].expiryYear : expiryVal;
                 let kg = (soldKey && allRawData[soldKey].kg) ? allRawData[soldKey].kg : kgVal;
                 let targetStatus = isInternal ? 'internal' : 'customer';
                 
-                let data = { code: codeSoldVal, kg: kg || null, expiryYear: expiry || null, status: targetStatus, ownerType: 'ours', dateString, timestamp: now.getTime() };
+                let data = { 
+                    code: codeSoldVal, 
+                    kg: kg || null, 
+                    expiryYear: expiry || null, 
+                    status: targetStatus, 
+                    ownerType: 'ours', // เป็นถังของเราสีเขียวเหมือนเดิม
+                    dateString, 
+                    timestamp: now.getTime() 
+                };
                 if (soldKey) {
                     codesRef.child(soldKey).update(data).then(() => triggerHighlight(soldKey));
                 } else {
@@ -278,10 +287,19 @@
                 }
             }
 
+            // 2. จัดการฝั่งถังที่รับเข้ามาใหม่ (เปลี่ยนให้เป็นถังของลูกค้าสีแดง)
             if (codeReceivedVal) {
                 let expiry = (receivedKey && allRawData[receivedKey].expiryYear) ? allRawData[receivedKey].expiryYear : expiryVal;
                 let kg = (receivedKey && allRawData[receivedKey].kg) ? allRawData[receivedKey].kg : kgVal;
-                let data = { code: codeReceivedVal, kg: kg || null, expiryYear: expiry || null, status: codeSoldVal ? 'empty' : 'full', ownerType: 'ours', dateString, timestamp: now.getTime() };
+                let data = { 
+                    code: codeReceivedVal, 
+                    kg: kg || null, 
+                    expiryYear: expiry || null, 
+                    status: codeSoldVal ? 'empty' : 'full', 
+                    ownerType: 'received', // เปลี่ยนเป็นถังลูกค้า (สีแดง) เรียบร้อยครับ
+                    dateString, 
+                    timestamp: now.getTime() 
+                };
                 if (receivedKey) {
                     codesRef.child(receivedKey).update(data).then(() => triggerHighlight(receivedKey));
                 } else {
