@@ -49,7 +49,6 @@
         .highlight-row { outline: 3px solid #ffc107 !important; outline-offset: -3px; background-color: #fffde7; }
         .table-cb { width: 16px; height: 16px; cursor: pointer; display: block; margin: 0 auto; }
 
-        /* [เพิ่มสไตล์]: สำหรับแผง Dashboard สรุปยอดถัง */
         .summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 15px; }
         .summary-box { background: #ffffff; border-radius: 8px; padding: 6px 2px; text-align: center; border: 1px solid #e9ecef; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
         .summary-title { font-size: 10px; font-weight: 600; color: #6c757d; margin-bottom: 3px; white-space: nowrap; }
@@ -127,7 +126,6 @@
                 </div>
             </h2>
 
-            <!-- [เพิ่มฟีเจอร์]: แผงแสดงสรุปยอดจำนวนถังแต่ละประเภทแยกหมวดหมู่ชัดเจน -->
             <div class="summary-grid">
                 <div class="summary-box sm-full">
                     <div class="summary-title">🟢 เต็ม</div>
@@ -312,27 +310,28 @@
 
             const currentYearBE = new Date().getFullYear() + 543;
 
-            // [เพิ่มฟีเจอร์]: ตัวแปรสำหรับคำนวณสรุปยอดสต็อกถังทั้งหมด (ดึงจากข้อมูลดิบจริง ไม่สน filter ค้นหาเพื่อให้ยอดนิ่งเสถียร)
             let totalFull = 0, totalInternal = 0, totalCustomer = 0, totalEmpty = 0, totalExpired = 0;
 
+            // [ปรับปรุงแก้ไข]: แยกถังหมดอายุออกจากยอดนับหลักทั้งหมดอย่างเด็ดขาด ไม่บวกรวมซ้ำซ้อนในกลุ่มถังดี
             Object.keys(allRawData).forEach(k => {
                 const item = allRawData[k];
-                if (item.status === 'full') totalFull++;
-                else if (item.status === 'internal') totalInternal++;
-                else if (item.status === 'customer') totalCustomer++;
-                else if (item.status === 'empty') totalEmpty++;
-
-                if (checkExpired(item, currentYearBE)) totalExpired++;
+                if (checkExpired(item, currentYearBE)) {
+                    totalExpired++; // ถ้าหมดอายุ ให้เข้านับช่องหมดอายุช่องเดียว
+                } else {
+                    // ถ้ายังไม่หมดอายุ ค่อยแยกไปนับตามสถานะปกติ
+                    if (item.status === 'full') totalFull++;
+                    else if (item.status === 'internal') totalInternal++;
+                    else if (item.status === 'customer') totalCustomer++;
+                    else if (item.status === 'empty') totalEmpty++;
+                }
             });
 
-            // อัปเดตยอดสะสมขึ้นแผงแดชบอร์ดด้านบน
             document.getElementById('summaryFullCount').innerText = totalFull;
             document.getElementById('summaryInternalCount').innerText = totalInternal;
             document.getElementById('summaryCustomerCount').innerText = totalCustomer;
             document.getElementById('summaryEmptyCount').innerText = totalEmpty;
             document.getElementById('summaryExpiredCount').innerText = totalExpired;
             
-            // คัดกรองผลลัพธ์ผ่านช่องค้นหา (ถ้ามี)
             if (searchVal) items = items.filter(i => String(i.code).toLowerCase().includes(searchVal));
 
             const statusPriority = { 'full': 1, 'internal': 2, 'customer': 3, 'empty': 4 };
