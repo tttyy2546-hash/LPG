@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบจัดการข้อมูลถังแก๊ส LPG</title>
+    <title>ระบบจัดการข้อมูลถังแก๊ส LPG (กู้คืนข้อมูล)</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -202,8 +202,8 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         
-        // 🔒 ชี้ไปยัง Node หลักเก็บข้อมูลถังจริง (codes)
-        const codesRef = database.ref('codes');
+        // 🔄 ดึงข้อมูลจาก Node 'testCodes' เพื่อให้ประวัติและข้อมูลที่เคยสแกนไว้ทั้งหมดกลับมาแสดงผลทันที
+        const codesRef = database.ref('testCodes');
 
         let allRawData = {}, editId = null;
         let currentHighlightKey = null;
@@ -237,7 +237,6 @@
             const now = new Date();
             const dateString = now.toLocaleString('th-TH', { hour12: false });
 
-            // 📝 โหมดกดปุ่มแก้ไขแมนนวล (เปิดสิทธิ์อิสระในการอัปเดตสีและสถานะ)
             if (editId) {
                 codesRef.child(editId).update({
                     code: codeSoldVal, kg: kgVal || null, expiryYear: expiryVal || null,
@@ -279,13 +278,11 @@
                 }
             }
 
-            // 1. ประมวลผลฝั่งบันทึกการจ่ายขาย (พร้อมตรรกะล็อกสีเดิมถาวร)
+            // 1. ฝั่งบันทึกการจ่ายขาย (พร้อมตรรกะล็อกสีเดิมถาวร)
             if (codeSoldVal && soldKey) {
                 let expiry = allRawData[soldKey].expiryYear || expiryVal;
                 let kg = allRawData[soldKey].kg || kgVal;
                 let targetStatus = isInternal ? 'internal' : 'customer';
-                
-                // 🔒 ดึงค่าประเภทเจ้าของเดิมเสมอ ป้องกันการเปลี่ยนสีอัตโนมัติ
                 let finalOwnerType = allRawData[soldKey].ownerType || 'ours';
 
                 codesRef.child(soldKey).update({ 
@@ -295,12 +292,10 @@
                 }).then(() => triggerHighlight(soldKey));
             }
 
-            // 2. ประมวลผลฝั่งรับคืนถัง (พร้อมตรรกะล็อกสีเดิมถาวร)
+            // 2. ฝั่งรับคืนถัง (พร้อมตรรกะล็อกสีเดิมถาวร)
             if (codeReceivedVal) {
                 let expiry = (receivedKey && allRawData[receivedKey].expiryYear) ? allRawData[receivedKey].expiryYear : expiryVal;
                 let kg = (receivedKey && allRawData[receivedKey].kg) ? allRawData[receivedKey].kg : kgVal;
-                
-                // 🔒 ถ้ารหัสมีประวัติอยู่แล้วให้ใช้สีเดิม แต่ถ้าเป็นถังเข้าระบบครั้งแรกให้กำหนดเป็นสีแดง (received)
                 let finalOwnerType = receivedKey ? (allRawData[receivedKey].ownerType || 'received') : 'received';
 
                 let data = { 
@@ -352,9 +347,9 @@
                 const updates = {};
                 checkedBoxes.forEach(cb => {
                     const id = cb.getAttribute('data-id');
-                    updates[`/codes/${id}/status`] = 'full';
-                    updates[`/codes/${id}/dateString`] = dateString;
-                    updates[`/codes/${id}/timestamp`] = now.getTime();
+                    updates[`/testCodes/${id}/status`] = 'full';
+                    updates[`/testCodes/${id}/dateString`] = dateString;
+                    updates[`/testCodes/${id}/timestamp`] = now.getTime();
                 });
                 database.ref().update(updates).then(() => {
                     alert('✅ อัปเดตสถานะถังที่ส่งเติมแก๊สเป็นถังเต็มสำเร็จ!');
