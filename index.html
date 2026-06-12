@@ -245,6 +245,7 @@
             const now = new Date();
             const dateString = now.toLocaleString('th-TH', { hour12: false });
 
+            // ส่วนนี้คือการกดปุ่ม "แก้ไข" (อนุญาตให้ผู้ดูแลปรับได้อิสระ)
             if (editId) {
                 codesRef.child(editId).update({
                     code: codeSoldVal, kg: kgVal || null, expiryYear: expiryVal || null,
@@ -260,22 +261,33 @@
             let soldKey = findTankKey(codeSoldVal, kgVal);
             let receivedKey = findTankKey(codeReceivedVal, kgVal);
 
+            // 🛑 เพิ่มระบบล็อค: ตรวจสอบสถานะถังที่จะขายว่าเป็น "ถังเปล่า" หรือไม่
+            if (codeSoldVal && soldKey) {
+                if (allRawData[soldKey].status === 'empty') {
+                    alert(`⚠️ ล้มเหลว! ไม่สามารถขายถังรหัส "${codeSoldVal}" ได้\n\nเนื่องจากถังใบนี้มีสถานะเป็น "ถังเปล่า" ในระบบ\nกรุณาส่งเติมแก๊ส (เปลี่ยนสถานะเป็นถังเต็ม) ก่อนนำมาขายครับ`);
+                    return; // ยกเลิกการทำงานทันที
+                }
+            }
+
             if ((codeSoldVal && !soldKey) || (codeReceivedVal && !receivedKey)) {
                 if (!confirm('ไม่พบหมายเลขถังขนาดนี้ในฐานข้อมูล ต้องการเพิ่มใหม่หรือไม่?')) return;
             }
 
-            // 1. จัดการฝั่งถังที่ขายไป (ถังเราสีเขียวเสมอ)
+            // 1. จัดการฝั่งถังที่ขายไป
             if (codeSoldVal) {
                 let expiry = (soldKey && allRawData[soldKey].expiryYear) ? allRawData[soldKey].expiryYear : expiryVal;
                 let kg = (soldKey && allRawData[soldKey].kg) ? allRawData[soldKey].kg : kgVal;
                 let targetStatus = isInternal ? 'internal' : 'customer';
+                
+                // 🟢 เช็คเจ้าของถัง: ถ้าเป็นถังที่มีในระบบอยู่แล้ว ให้ใช้เจ้าของเดิม แต่ถ้าถังใหม่ให้เป็น 'ours' (ถังเรา)
+                let currentOwner = (soldKey && allRawData[soldKey].ownerType) ? allRawData[soldKey].ownerType : 'ours';
                 
                 let data = { 
                     code: codeSoldVal, 
                     kg: kg || null, 
                     expiryYear: expiry || null, 
                     status: targetStatus, 
-                    ownerType: 'ours', // เป็นถังของเราสีเขียวเหมือนเดิม
+                    ownerType: currentOwner, 
                     dateString, 
                     timestamp: now.getTime() 
                 };
@@ -287,16 +299,20 @@
                 }
             }
 
-            // 2. จัดการฝั่งถังที่รับเข้ามาใหม่ (เปลี่ยนให้เป็นถังของลูกค้าสีแดง)
+            // 2. จัดการฝั่งถังที่รับเข้ามาใหม่
             if (codeReceivedVal) {
                 let expiry = (receivedKey && allRawData[receivedKey].expiryYear) ? allRawData[receivedKey].expiryYear : expiryVal;
                 let kg = (receivedKey && allRawData[receivedKey].kg) ? allRawData[receivedKey].kg : kgVal;
+                
+                // 🔴 เช็คเจ้าของถัง: ถ้าเป็นถังที่มีในระบบอยู่แล้ว ให้ใช้เจ้าของเดิม แต่ถ้าถังใหม่ให้เป็น 'received' (ถังลูกค้า)
+                let currentOwner = (receivedKey && allRawData[receivedKey].ownerType) ? allRawData[receivedKey].ownerType : 'received';
+
                 let data = { 
                     code: codeReceivedVal, 
                     kg: kg || null, 
                     expiryYear: expiry || null, 
                     status: codeSoldVal ? 'empty' : 'full', 
-                    ownerType: 'received', // เปลี่ยนเป็นถังลูกค้า (สีแดง) เรียบร้อยครับ
+                    ownerType: currentOwner,
                     dateString, 
                     timestamp: now.getTime() 
                 };
